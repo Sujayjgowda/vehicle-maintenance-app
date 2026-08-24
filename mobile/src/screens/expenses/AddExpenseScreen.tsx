@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,13 +20,20 @@ import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 const categories = ['FUEL', 'SERVICE', 'REPAIR', 'INSURANCE', 'TOLL', 'PARKING', 'OTHER'];
 
 export default function AddExpenseScreen({ route, navigation }: any) {
-  const { vehicleId } = route.params;
+  const { vehicleId, record } = route.params || {};
+  const isEditing = Boolean(record);
 
-  const [date, setDate] = useState<Date>(new Date());
-  const [category, setCategory] = useState('FUEL');
-  const [amount, setAmount] = useState('');
-  const [notes, setNotes] = useState('');
+  const [date, setDate] = useState<Date>(record ? new Date(record.date) : new Date());
+  const [category, setCategory] = useState(record ? record.category : 'FUEL');
+  const [amount, setAmount] = useState(record ? String(record.amount) : '');
+  const [notes, setNotes] = useState(record?.notes || '');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: isEditing ? 'Edit Expense' : 'Add Expense',
+    });
+  }, [isEditing, navigation]);
 
   const handleSubmit = async () => {
     if (isAfter(startOfDay(date), startOfDay(new Date()))) {
@@ -47,13 +54,25 @@ export default function AddExpenseScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      await expensesApi.create(vehicleId, {
-        category,
-        amount: parsedAmount,
-        date: date.toISOString(),
-        notes: notes || undefined,
-      });
-      navigation.goBack();
+      if (isEditing) {
+        await expensesApi.update(vehicleId, record.id, {
+          category,
+          amount: parsedAmount,
+          date: date.toISOString(),
+          notes: notes || undefined,
+        });
+        Alert.alert('Success', 'Expense updated successfully! 💰', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await expensesApi.create(vehicleId, {
+          category,
+          amount: parsedAmount,
+          date: date.toISOString(),
+          notes: notes || undefined,
+        });
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save expense');
     } finally {
@@ -102,7 +121,7 @@ export default function AddExpenseScreen({ route, navigation }: any) {
             numberOfLines={2}
           />
           <Button
-            title="Save Expense"
+            title={isEditing ? 'Update Expense' : 'Save Expense'}
             onPress={handleSubmit}
             loading={loading}
             style={{ marginTop: spacing.md }}

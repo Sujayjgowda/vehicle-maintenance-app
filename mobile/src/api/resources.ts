@@ -2,13 +2,16 @@ import api from './client';
 
 export const servicesApi = {
   getAll: (vehicleId: string) => api.get(`/vehicles/${vehicleId}/services`),
+  getById: (vehicleId: string, id: string) => api.get(`/vehicles/${vehicleId}/services/${id}`),
   create: (vehicleId: string, data: any) => api.post(`/vehicles/${vehicleId}/services`, data),
+  update: (vehicleId: string, id: string, data: any) => api.put(`/vehicles/${vehicleId}/services/${id}`, data),
   delete: (vehicleId: string, id: string) => api.delete(`/vehicles/${vehicleId}/services/${id}`),
 };
 
 export const expensesApi = {
   getAll: (vehicleId: string) => api.get(`/vehicles/${vehicleId}/expenses`),
   create: (vehicleId: string, data: any) => api.post(`/vehicles/${vehicleId}/expenses`, data),
+  update: (vehicleId: string, id: string, data: any) => api.put(`/vehicles/${vehicleId}/expenses/${id}`, data),
   delete: (vehicleId: string, id: string) => api.delete(`/vehicles/${vehicleId}/expenses/${id}`),
   getSummary: (vehicleId: string) => api.get(`/vehicles/${vehicleId}/expenses/summary`),
   getUserSummary: () => api.get('/expenses/summary'),
@@ -25,12 +28,14 @@ export const remindersApi = {
 export const partsApi = {
   getAll: (vehicleId: string) => api.get(`/vehicles/${vehicleId}/parts`),
   create: (vehicleId: string, data: any) => api.post(`/vehicles/${vehicleId}/parts`, data),
+  update: (vehicleId: string, id: string, data: any) => api.put(`/vehicles/${vehicleId}/parts/${id}`, data),
   delete: (vehicleId: string, id: string) => api.delete(`/vehicles/${vehicleId}/parts/${id}`),
 };
 
 export const repairsApi = {
   getAll: (vehicleId: string) => api.get(`/vehicles/${vehicleId}/repairs`),
   create: (vehicleId: string, data: any) => api.post(`/vehicles/${vehicleId}/repairs`, data),
+  update: (vehicleId: string, id: string, data: any) => api.put(`/vehicles/${vehicleId}/repairs/${id}`, data),
   delete: (vehicleId: string, id: string) => api.delete(`/vehicles/${vehicleId}/repairs/${id}`),
 };
 

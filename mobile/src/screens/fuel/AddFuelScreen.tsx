@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -27,15 +27,25 @@ const FUEL_TYPES = [
 ];
 
 export default function AddFuelScreen({ route, navigation }: any) {
-  const { vehicleId } = route.params;
+  const { vehicleId, record } = route.params || {};
+  const isEditing = Boolean(record);
 
-  const [date, setDate] = useState<Date>(new Date());
+  const [date, setDate] = useState<Date>(record ? new Date(record.date) : new Date());
   const [fuelType, setFuelType] = useState('PETROL');
-  const [ratePerLiter, setRatePerLiter] = useState('102.86');
-  const [liters, setLiters] = useState('');
-  const [cost, setCost] = useState('');
-  const [odometer, setOdometer] = useState('');
+  const [ratePerLiter, setRatePerLiter] = useState(
+    record && record.liters > 0 ? (record.cost / record.liters).toFixed(2) : '102.86'
+  );
+  const [liters, setLiters] = useState(record ? String(record.liters) : '');
+  const [cost, setCost] = useState(record ? String(record.cost) : '');
+  const [odometer, setOdometer] = useState(record ? String(record.odometerReading) : '');
   const [loading, setLoading] = useState(false);
+
+  // Set navigation header title dynamically
+  useEffect(() => {
+    navigation.setOptions({
+      title: isEditing ? 'Edit Fuel Record' : 'Add Fuel Record',
+    });
+  }, [isEditing, navigation]);
 
   // Handle Fuel Type Selection
   const handleSelectFuelType = (item: typeof FUEL_TYPES[0]) => {
@@ -120,15 +130,27 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      await fuelApi.create(vehicleId, {
-        date: date.toISOString(),
-        liters: parsedLiters,
-        cost: parsedCost,
-        odometerReading: parsedOdometer,
-      });
-      navigation.goBack();
+      if (isEditing) {
+        await fuelApi.update(vehicleId, record.id, {
+          date: date.toISOString(),
+          liters: parsedLiters,
+          cost: parsedCost,
+          odometerReading: parsedOdometer,
+        });
+        Alert.alert('Success', 'Fuel record updated successfully! ⛽', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await fuelApi.create(vehicleId, {
+          date: date.toISOString(),
+          liters: parsedLiters,
+          cost: parsedCost,
+          odometerReading: parsedOdometer,
+        });
+        navigation.goBack();
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || 'Failed to add fuel record');
+      Alert.alert('Error', e.response?.data?.message || 'Failed to save fuel record');
     } finally {
       setLoading(false);
     }
@@ -234,7 +256,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
           />
 
           <Button
-            title="Save Fuel Record"
+            title={isEditing ? 'Update Fuel Record' : 'Save Fuel Record'}
             onPress={handleSubmit}
             loading={loading}
             style={{ marginTop: spacing.lg }}

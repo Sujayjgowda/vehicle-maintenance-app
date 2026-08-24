@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { isAfter, startOfDay } from 'date-fns';
@@ -9,15 +9,22 @@ import DatePickerInput from '../../components/DatePickerInput';
 import { colors, spacing } from '../../theme/colors';
 
 export default function AddServiceScreen({ route, navigation }: any) {
-  const { vehicleId } = route.params;
+  const { vehicleId, record } = route.params || {};
+  const isEditing = Boolean(record);
 
-  const [date, setDate] = useState<Date>(new Date());
-  const [serviceType, setServiceType] = useState('');
-  const [serviceCenter, setServiceCenter] = useState('');
-  const [odometer, setOdometer] = useState('');
-  const [cost, setCost] = useState('');
-  const [notes, setNotes] = useState('');
+  const [date, setDate] = useState<Date>(record ? new Date(record.date) : new Date());
+  const [serviceType, setServiceType] = useState(record ? record.serviceType : '');
+  const [serviceCenter, setServiceCenter] = useState(record?.serviceCenter || '');
+  const [odometer, setOdometer] = useState(record ? String(record.odometer) : '');
+  const [cost, setCost] = useState(record ? String(record.cost) : '');
+  const [notes, setNotes] = useState(record?.notes || '');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: isEditing ? 'Edit Service Record' : 'Add Service',
+    });
+  }, [isEditing, navigation]);
 
   const handleSubmit = async () => {
     if (isAfter(startOfDay(date), startOfDay(new Date()))) {
@@ -45,15 +52,29 @@ export default function AddServiceScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      await servicesApi.create(vehicleId, {
-        date: date.toISOString(),
-        serviceType,
-        serviceCenter: serviceCenter || undefined,
-        odometer: parsedOdometer,
-        cost: parsedCost,
-        notes: notes || undefined,
-      });
-      navigation.goBack();
+      if (isEditing) {
+        await servicesApi.update(vehicleId, record.id, {
+          date: date.toISOString(),
+          serviceType,
+          serviceCenter: serviceCenter || undefined,
+          odometer: parsedOdometer,
+          cost: parsedCost,
+          notes: notes || undefined,
+        });
+        Alert.alert('Success', 'Service record updated successfully! 🔧', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await servicesApi.create(vehicleId, {
+          date: date.toISOString(),
+          serviceType,
+          serviceCenter: serviceCenter || undefined,
+          odometer: parsedOdometer,
+          cost: parsedCost,
+          notes: notes || undefined,
+        });
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save service record');
     } finally {
@@ -107,7 +128,7 @@ export default function AddServiceScreen({ route, navigation }: any) {
             numberOfLines={3}
           />
           <Button
-            title="Save Service Record"
+            title={isEditing ? 'Update Service Record' : 'Save Service Record'}
             onPress={handleSubmit}
             loading={loading}
             style={{ marginTop: spacing.md }}

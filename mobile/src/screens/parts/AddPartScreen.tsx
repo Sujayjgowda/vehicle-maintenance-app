@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { isAfter, startOfDay } from 'date-fns';
@@ -9,16 +9,23 @@ import DatePickerInput from '../../components/DatePickerInput';
 import { colors, spacing } from '../../theme/colors';
 
 export default function AddPartScreen({ route, navigation }: any) {
-  const { vehicleId } = route.params;
+  const { vehicleId, record } = route.params || {};
+  const isEditing = Boolean(record);
 
-  const [installDate, setInstallDate] = useState<Date>(new Date());
-  const [name, setName] = useState('');
-  const [odometer, setOdometer] = useState('');
-  const [intervalKm, setIntervalKm] = useState('');
-  const [intervalMonths, setIntervalMonths] = useState('');
-  const [cost, setCost] = useState('');
-  const [notes, setNotes] = useState('');
+  const [installDate, setInstallDate] = useState<Date>(record ? new Date(record.installDate) : new Date());
+  const [name, setName] = useState(record ? record.componentName : '');
+  const [odometer, setOdometer] = useState(record ? String(record.installOdometer) : '');
+  const [intervalKm, setIntervalKm] = useState(record?.replacementIntervalKm ? String(record.replacementIntervalKm) : '');
+  const [intervalMonths, setIntervalMonths] = useState(record?.replacementIntervalMonths ? String(record.replacementIntervalMonths) : '');
+  const [cost, setCost] = useState(record?.cost ? String(record.cost) : '');
+  const [notes, setNotes] = useState(record?.notes || '');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: isEditing ? 'Edit Part Record' : 'Add Part',
+    });
+  }, [isEditing, navigation]);
 
   const handleSubmit = async () => {
     if (isAfter(startOfDay(installDate), startOfDay(new Date()))) {
@@ -39,16 +46,31 @@ export default function AddPartScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      await partsApi.create(vehicleId, {
-        componentName: name,
-        installDate: installDate.toISOString(),
-        installOdometer: parsedOdometer,
-        replacementIntervalKm: intervalKm ? parseInt(intervalKm) : undefined,
-        replacementIntervalMonths: intervalMonths ? parseInt(intervalMonths) : undefined,
-        cost: cost ? parseFloat(cost) : undefined,
-        notes: notes || undefined,
-      });
-      navigation.goBack();
+      if (isEditing) {
+        await partsApi.update(vehicleId, record.id, {
+          componentName: name,
+          installDate: installDate.toISOString(),
+          installOdometer: parsedOdometer,
+          replacementIntervalKm: intervalKm ? parseInt(intervalKm) : undefined,
+          replacementIntervalMonths: intervalMonths ? parseInt(intervalMonths) : undefined,
+          cost: cost ? parseFloat(cost) : undefined,
+          notes: notes || undefined,
+        });
+        Alert.alert('Success', 'Part record updated successfully! ⚙️', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        await partsApi.create(vehicleId, {
+          componentName: name,
+          installDate: installDate.toISOString(),
+          installOdometer: parsedOdometer,
+          replacementIntervalKm: intervalKm ? parseInt(intervalKm) : undefined,
+          replacementIntervalMonths: intervalMonths ? parseInt(intervalMonths) : undefined,
+          cost: cost ? parseFloat(cost) : undefined,
+          notes: notes || undefined,
+        });
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save part record');
     } finally {
@@ -110,7 +132,7 @@ export default function AddPartScreen({ route, navigation }: any) {
             numberOfLines={2}
           />
           <Button
-            title="Save Part Record"
+            title={isEditing ? 'Update Part Record' : 'Save Part Record'}
             onPress={handleSubmit}
             loading={loading}
             style={{ marginTop: spacing.md }}

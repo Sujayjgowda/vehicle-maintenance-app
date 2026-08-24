@@ -96,15 +96,30 @@ export async function updateFuelRecord(id: string, vehicleId: string, data: Upda
     throw err;
   }
 
-  return prisma.fuelRecord.update({
+  const updatedOdometer = data.odometerReading ?? existing.odometerReading;
+  const updatedLiters = data.liters ?? existing.liters;
+  const updatedCost = data.cost ?? existing.cost;
+
+  const { averageKmpl, costPerKm } = await calculateFuelMetrics(
+    vehicleId,
+    updatedOdometer,
+    updatedLiters,
+    updatedCost
+  );
+
+  const updated = await prisma.fuelRecord.update({
     where: { id },
     data: {
       ...(data.date && { date: new Date(data.date) }),
       ...(data.liters !== undefined && { liters: data.liters }),
       ...(data.cost !== undefined && { cost: data.cost }),
       ...(data.odometerReading !== undefined && { odometerReading: data.odometerReading }),
+      averageKmpl,
+      costPerKm,
     },
   });
+
+  return updated;
 }
 
 export async function deleteFuelRecord(id: string, vehicleId: string) {

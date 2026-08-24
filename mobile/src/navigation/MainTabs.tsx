@@ -16,6 +16,7 @@ import AddServiceScreen from '../screens/service/AddServiceScreen';
 import ExpenseListScreen from '../screens/expenses/ExpenseListScreen';
 import AddExpenseScreen from '../screens/expenses/AddExpenseScreen';
 import ReminderListScreen from '../screens/reminders/ReminderListScreen';
+import AddReminderScreen from '../screens/reminders/AddReminderScreen';
 import PartListScreen from '../screens/parts/PartListScreen';
 import AddPartScreen from '../screens/parts/AddPartScreen';
 import RepairListScreen from '../screens/repairs/RepairListScreen';
@@ -24,7 +25,7 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 const VehicleStack = createNativeStackNavigator();
-const ExpenseStack = createNativeStackNavigator();
+const ReminderStack = createNativeStackNavigator();
 
 function VehiclesStackNavigator() {
   return (
@@ -39,6 +40,7 @@ function VehiclesStackNavigator() {
       <VehicleStack.Screen name="ExpenseList" component={ExpenseListScreen} />
       <VehicleStack.Screen name="AddExpense" component={AddExpenseScreen} options={{ headerShown: true, title: 'Add Expense', headerTintColor: colors.primary }} />
       <VehicleStack.Screen name="ReminderList" component={ReminderListScreen} />
+      <VehicleStack.Screen name="AddReminder" component={AddReminderScreen} options={{ headerShown: true, title: 'Set Reminder', headerTintColor: colors.primary }} />
       <VehicleStack.Screen name="PartList" component={PartListScreen} />
       <VehicleStack.Screen name="AddPart" component={AddPartScreen} options={{ headerShown: true, title: 'Add Part', headerTintColor: colors.primary }} />
       <VehicleStack.Screen name="RepairList" component={RepairListScreen} />
@@ -47,11 +49,12 @@ function VehiclesStackNavigator() {
   );
 }
 
-function ExpensesStackNavigator() {
+function RemindersStackNavigator() {
   return (
-    <ExpenseStack.Navigator screenOptions={{ headerShown: false }}>
-      <ExpenseStack.Screen name="ExpenseOverview" component={ExpenseListScreen} initialParams={{}} />
-    </ExpenseStack.Navigator>
+    <ReminderStack.Navigator screenOptions={{ headerShown: false }}>
+      <ReminderStack.Screen name="ReminderOverview" component={ReminderListScreen} />
+      <ReminderStack.Screen name="AddReminder" component={AddReminderScreen} options={{ headerShown: true, title: 'Set Reminder', headerTintColor: colors.primary }} />
+    </ReminderStack.Navigator>
   );
 }
 
@@ -82,7 +85,7 @@ export default function MainTabs() {
     >
       <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="VehiclesTab" component={VehiclesStackNavigator} options={{ tabBarLabel: 'Vehicles' }} />
-      <Tab.Screen name="RemindersTab" component={ReminderListScreen} options={{ tabBarLabel: 'Reminders' }} />
+      <Tab.Screen name="RemindersTab" component={RemindersStackNavigator} options={{ tabBarLabel: 'Reminders' }} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );

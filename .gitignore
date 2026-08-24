@@ -11,6 +11,8 @@ mobile/.env
 # Build outputs
 backend/dist/
 backend/generated/
+backend/prisma.config.js*
+backend/prisma.config.d.ts*
 mobile/dist/
 mobile/.expo/
 mobile/*.apk

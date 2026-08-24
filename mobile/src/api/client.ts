@@ -2,8 +2,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Use local machine Wi-Fi IP so APK works on both real phones and emulators
-const BASE_URL = 'http://192.168.1.104:3000/api';
+// 24/7 Cloud Backend on Render
+const BASE_URL = 'https://vehicle-maintenance-app-yk77.onrender.com/api';
 
 const api = axios.create({
   baseURL: BASE_URL,

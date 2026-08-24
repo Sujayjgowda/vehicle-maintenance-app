@@ -1,0 +1,77 @@
+import type { CreatePartRecordInput, UpdatePartRecordInput } from "../validators/part.validator";
+export declare function getAllPartRecords(vehicleId: string): Promise<{
+    id: string;
+    vehicleId: string;
+    componentName: string;
+    installDate: Date;
+    installOdometer: number;
+    replacementIntervalKm: number | null;
+    replacementIntervalMonths: number | null;
+    nextDueKm: number | null;
+    nextDueDate: Date | null;
+    cost: number | null;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}[]>;
+export declare function getPartRecordById(id: string, vehicleId: string): Promise<{
+    id: string;
+    vehicleId: string;
+    componentName: string;
+    installDate: Date;
+    installOdometer: number;
+    replacementIntervalKm: number | null;
+    replacementIntervalMonths: number | null;
+    nextDueKm: number | null;
+    nextDueDate: Date | null;
+    cost: number | null;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}>;
+export declare function createPartRecord(vehicleId: string, data: CreatePartRecordInput): Promise<{
+    id: string;
+    vehicleId: string;
+    componentName: string;
+    installDate: Date;
+    installOdometer: number;
+    replacementIntervalKm: number | null;
+    replacementIntervalMonths: number | null;
+    nextDueKm: number | null;
+    nextDueDate: Date | null;
+    cost: number | null;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}>;
+export declare function updatePartRecord(id: string, vehicleId: string, data: UpdatePartRecordInput): Promise<{
+    id: string;
+    vehicleId: string;
+    componentName: string;
+    installDate: Date;
+    installOdometer: number;
+    replacementIntervalKm: number | null;
+    replacementIntervalMonths: number | null;
+    nextDueKm: number | null;
+    nextDueDate: Date | null;
+    cost: number | null;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}>;
+export declare function deletePartRecord(id: string, vehicleId: string): Promise<{
+    id: string;
+    vehicleId: string;
+    componentName: string;
+    installDate: Date;
+    installOdometer: number;
+    replacementIntervalKm: number | null;
+    replacementIntervalMonths: number | null;
+    nextDueKm: number | null;
+    nextDueDate: Date | null;
+    cost: number | null;
+    notes: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}>;
+//# sourceMappingURL=part.service.d.ts.map

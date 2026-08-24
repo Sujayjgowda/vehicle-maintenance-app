@@ -1,0 +1,271 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── User ────────────────────────────────────────────────────────────────────
+
+model User {
+  id             String          @id @default(uuid())
+  name           String
+  email          String          @unique
+  passwordHash   String
+  role           Role            @default(OWNER)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  vehicles       Vehicle[]
+  serviceCenters ServiceCenter[]
+  notifications  Notification[]
+}
+
+enum Role {
+  OWNER
+  FLEET_MANAGER
+  DRIVER
+  ADMIN
+}
+
+// ─── Vehicle ─────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  make            String
+  model           String
+  year            Int
+  licensePlate    String          @unique
+  currentOdometer Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  fuelRecords     FuelRecord[]
+  serviceRecords  ServiceRecord[]
+  documents       Document[]
+  reminders       Reminder[]
+  expenses        Expense[]
+  partRecords     PartRecord[]
+  repairLogs      RepairLog[]
+
+  @@index([userId])
+}
+
+// ─── Fuel Record ─────────────────────────────────────────────────────────────
+
+model FuelRecord {
+  id              String   @id @default(uuid())
+  vehicleId       String
+  vehicle         Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  date            DateTime
+  liters          Float
+  cost            Float
+  odometerReading Int
+  averageKmpl     Float?
+  costPerKm       Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([date])
+}
+
+// ─── Service Record ──────────────────────────────────────────────────────────
+
+model ServiceRecord {
+  id            String   @id @default(uuid())
+  vehicleId     String
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  date          DateTime
+  odometer      Int
+  serviceType   String
+  serviceCenter String?
+  cost          Float
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([date])
+}
+
+// ─── Document ────────────────────────────────────────────────────────────────
+
+model Document {
+  id         String    @id @default(uuid())
+  vehicleId  String
+  vehicle    Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  docType    DocType
+  title      String?
+  fileUrl    String
+  expiryDate DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([vehicleId])
+  @@index([expiryDate])
+}
+
+enum DocType {
+  RC
+  PUC
+  INSURANCE
+  INVOICE
+  WARRANTY
+  OTHER
+}
+
+// ─── Reminder ────────────────────────────────────────────────────────────────
+
+model Reminder {
+  id            String         @id @default(uuid())
+  vehicleId     String
+  vehicle       Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  title         String?
+  type          ReminderType
+  dueDate       DateTime?
+  dueKm         Int?
+  status        ReminderStatus @default(PENDING)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  notifications Notification[]
+
+  @@index([vehicleId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+enum ReminderType {
+  SERVICE
+  PUC
+  INSURANCE
+  PART_REPLACEMENT
+}
+
+enum ReminderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+// ─── Expense ─────────────────────────────────────────────────────────────────
+
+model Expense {
+  id        String          @id @default(uuid())
+  vehicleId String
+  vehicle   Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  category  ExpenseCategory
+  amount    Float
+  date      DateTime
+  notes     String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([vehicleId])
+  @@index([category])
+  @@index([date])
+}
+
+enum ExpenseCategory {
+  FUEL
+  SERVICE
+  REPAIR
+  INSURANCE
+  TOLL
+  PARKING
+  OTHER
+}
+
+// ─── Part Record (Spare Parts & Component Tracking) ──────────────────────────
+
+model PartRecord {
+  id                    String   @id @default(uuid())
+  vehicleId             String
+  vehicle               Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  componentName         String
+  installDate           DateTime
+  installOdometer       Int
+  replacementIntervalKm Int?
+  replacementIntervalMonths Int?
+  nextDueKm             Int?
+  nextDueDate           DateTime?
+  cost                  Float?
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([nextDueDate])
+}
+
+// ─── Repair / Breakdown Log ──────────────────────────────────────────────────
+
+model RepairLog {
+  id          String   @id @default(uuid())
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  date        DateTime
+  odometer    Int
+  description String
+  cause       String?
+  location    String?
+  cost        Float
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([date])
+}
+
+// ─── Service Center ──────────────────────────────────────────────────────────
+
+model ServiceCenter {
+  id         String  @id @default(uuid())
+  userId     String
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  address    String?
+  latitude   Float?
+  longitude  Float?
+  phone      String?
+  isFavorite Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// ─── Notification ────────────────────────────────────────────────────────────
+
+model Notification {
+  id         String             @id @default(uuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminderId String?
+  reminder   Reminder?          @relation(fields: [reminderId], references: [id], onDelete: SetNull)
+  channel    NotificationChannel
+  message    String
+  sentAt     DateTime           @default(now())
+  status     NotificationStatus @default(PENDING)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([reminderId])
+  @@index([status])
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}

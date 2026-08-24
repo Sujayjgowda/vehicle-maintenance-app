@@ -31,6 +31,24 @@ export async function createServiceRecord(vehicleId: string, data: CreateService
     },
   });
 
+  // Automatically sync to Expenses
+  try {
+    const centerText = data.serviceCenter ? ` @ ${data.serviceCenter}` : "";
+    await prisma.expense.create({
+      data: {
+        vehicleId,
+        category: "SERVICE",
+        amount: data.cost,
+        date: new Date(data.date),
+        notes: `Service: ${data.serviceType}${centerText} (${data.odometer.toLocaleString()} KM)`,
+        sourceId: record.id,
+        sourceType: "SERVICE",
+      },
+    });
+  } catch (e) {
+    console.log("Error syncing service expense:", e);
+  }
+
   // Update vehicle odometer if higher
   const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
   if (vehicle && data.odometer > vehicle.currentOdometer) {
@@ -51,10 +69,16 @@ export async function updateServiceRecord(id: string, vehicleId: string, data: U
     throw err;
   }
 
-  return prisma.serviceRecord.update({
+  const updatedDate = data.date ? new Date(data.date) : existing.date;
+  const updatedCost = data.cost !== undefined ? data.cost : existing.cost;
+  const updatedServiceType = data.serviceType ?? existing.serviceType;
+  const updatedServiceCenter = data.serviceCenter !== undefined ? data.serviceCenter : existing.serviceCenter;
+  const updatedOdometer = data.odometer !== undefined ? data.odometer : existing.odometer;
+
+  const updated = await prisma.serviceRecord.update({
     where: { id },
     data: {
-      ...(data.date && { date: new Date(data.date) }),
+      ...(data.date && { date: updatedDate }),
       ...(data.odometer !== undefined && { odometer: data.odometer }),
       ...(data.serviceType !== undefined && { serviceType: data.serviceType }),
       ...(data.serviceCenter !== undefined && { serviceCenter: data.serviceCenter }),
@@ -62,6 +86,39 @@ export async function updateServiceRecord(id: string, vehicleId: string, data: U
       ...(data.notes !== undefined && { notes: data.notes }),
     },
   });
+
+  // Automatically sync update to Expenses
+  try {
+    const centerText = updatedServiceCenter ? ` @ ${updatedServiceCenter}` : "";
+    const notesText = `Service: ${updatedServiceType}${centerText} (${updatedOdometer.toLocaleString()} KM)`;
+    const existingExpense = await prisma.expense.findFirst({ where: { sourceId: id } });
+    if (existingExpense) {
+      await prisma.expense.update({
+        where: { id: existingExpense.id },
+        data: {
+          amount: updatedCost,
+          date: updatedDate,
+          notes: notesText,
+        },
+      });
+    } else {
+      await prisma.expense.create({
+        data: {
+          vehicleId,
+          category: "SERVICE",
+          amount: updatedCost,
+          date: updatedDate,
+          notes: notesText,
+          sourceId: updated.id,
+          sourceType: "SERVICE",
+        },
+      });
+    }
+  } catch (e) {
+    console.log("Error updating synced service expense:", e);
+  }
+
+  return updated;
 }
 
 export async function deleteServiceRecord(id: string, vehicleId: string) {
@@ -71,5 +128,13 @@ export async function deleteServiceRecord(id: string, vehicleId: string) {
     err.statusCode = 404;
     throw err;
   }
+
+  // Automatically remove synced Expense
+  try {
+    await prisma.expense.deleteMany({ where: { sourceId: id } });
+  } catch (e) {
+    console.log("Error deleting synced service expense:", e);
+  }
+
   return prisma.serviceRecord.delete({ where: { id } });
 }

@@ -3,6 +3,7 @@ import { authenticate } from "../middleware/auth";
 import { asyncHandler } from "../middleware/errorHandler";
 import * as reminderController from "../controllers/reminder.controller";
 import * as expenseController from "../controllers/expense.controller";
+import * as fuelController from "../controllers/fuel.controller";
 
 import authRoutes from "./auth.routes";
 import vehicleRoutes from "./vehicle.routes";
@@ -19,6 +20,9 @@ const router = Router();
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 router.use("/auth", authRoutes);
+
+// Public or authenticated live fuel rates endpoint
+router.get("/fuel/live-prices", asyncHandler(fuelController.getLivePrices as any));
 
 // ─── Protected routes (all require JWT) ─────────────────────────────────────
 router.use(authenticate as any);

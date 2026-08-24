@@ -1,4 +1,4 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AuthRequest } from "../middleware/auth";
 import * as fuelService from "../services/fuel.service";
 
@@ -30,4 +30,10 @@ export async function remove(req: AuthRequest, res: Response) {
 export async function getSummary(req: AuthRequest, res: Response) {
   const summary = await fuelService.getFuelSummary(req.params.vehicleId!);
   res.json(summary);
+}
+
+export async function getLivePrices(req: Request, res: Response) {
+  const city = req.query.city as string | undefined;
+  const prices = await fuelService.getLiveFuelPrices(city);
+  res.json(prices);
 }

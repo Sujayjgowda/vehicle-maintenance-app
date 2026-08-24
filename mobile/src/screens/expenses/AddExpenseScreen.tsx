@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { isAfter, startOfDay } from 'date-fns';
 import { expensesApi } from '../../api/resources';
 import Input from '../../components/Input';
@@ -17,14 +18,22 @@ import Button from '../../components/Button';
 import DatePickerInput from '../../components/DatePickerInput';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
-const categories = ['FUEL', 'SERVICE', 'REPAIR', 'INSURANCE', 'TOLL', 'PARKING', 'OTHER'];
+const categories: Array<{ id: string; label: string; icon: any; color: string; placeholder: string }> = [
+  { id: 'TOLL', label: 'Toll', icon: 'navigate-circle', color: '#0D9488', placeholder: 'e.g. Airport Expressway toll, FASTag recharge' },
+  { id: 'PARKING', label: 'Parking', icon: 'car', color: '#6366F1', placeholder: 'e.g. Mall parking, Monthly office parking' },
+  { id: 'FUEL', label: 'Fuel', icon: 'flame', color: colors.fuel, placeholder: 'e.g. Emergency fuel / canister fill' },
+  { id: 'SERVICE', label: 'Service', icon: 'build', color: colors.service, placeholder: 'e.g. Quick service, Wheel alignment' },
+  { id: 'REPAIR', label: 'Repair', icon: 'hammer', color: colors.error, placeholder: 'e.g. Puncture repair, Fuse replacement' },
+  { id: 'INSURANCE', label: 'Insurance', icon: 'shield-checkmark', color: '#10B981', placeholder: 'e.g. Annual policy renewal, Zero-dep add-on' },
+  { id: 'OTHER', label: 'Other', icon: 'receipt', color: colors.other, placeholder: 'e.g. Car wash, Ceramic coating, Accessories' },
+];
 
 export default function AddExpenseScreen({ route, navigation }: any) {
   const { vehicleId, record } = route.params || {};
   const isEditing = Boolean(record);
 
   const [date, setDate] = useState<Date>(record ? new Date(record.date) : new Date());
-  const [category, setCategory] = useState(record ? record.category : 'FUEL');
+  const [category, setCategory] = useState(record ? record.category : 'TOLL');
   const [amount, setAmount] = useState(record ? String(record.amount) : '');
   const [notes, setNotes] = useState(record?.notes || '');
   const [loading, setLoading] = useState(false);
@@ -34,6 +43,8 @@ export default function AddExpenseScreen({ route, navigation }: any) {
       title: isEditing ? 'Edit Expense' : 'Add Expense',
     });
   }, [isEditing, navigation]);
+
+  const selectedCategoryObj = categories.find((c) => c.id === category) || categories[0];
 
   const handleSubmit = async () => {
     if (isAfter(startOfDay(date), startOfDay(new Date()))) {
@@ -94,32 +105,48 @@ export default function AddExpenseScreen({ route, navigation }: any) {
 
           <Text style={styles.label}>CATEGORY *</Text>
           <View style={styles.chips}>
-            {categories.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[styles.chip, category === c && styles.chipActive]}
-                onPress={() => setCategory(c)}
-              >
-                <Text style={[styles.chipText, category === c && styles.chipTextActive]}>{c}</Text>
-              </TouchableOpacity>
-            ))}
+            {categories.map((c) => {
+              const active = category === c.id;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  style={[
+                    styles.chip,
+                    active && { backgroundColor: c.color, borderColor: c.color },
+                  ]}
+                  onPress={() => setCategory(c.id)}
+                >
+                  <Ionicons
+                    name={c.icon}
+                    size={14}
+                    color={active ? '#FFF' : c.color}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {c.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <Input
             label="Amount (₹) *"
             value={amount}
             onChangeText={setAmount}
-            placeholder="e.g. 500"
+            placeholder="e.g. 250"
             keyboardType="decimal-pad"
           />
+
           <Input
-            label="Notes"
+            label="Notes / Description"
             value={notes}
             onChangeText={setNotes}
-            placeholder="e.g. Highway toll, Monthly parking, Car wash"
+            placeholder={selectedCategoryObj?.placeholder || 'e.g. Highway toll, parking ticket'}
             multiline
             numberOfLines={2}
           />
+
           <Button
             title={isEditing ? 'Update Expense' : 'Save Expense'}
             onPress={handleSubmit}
@@ -150,6 +177,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.full,
@@ -157,17 +186,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  chipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
   chipText: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
     fontWeight: '500',
   },
   chipTextActive: {
-    color: colors.textOnPrimary,
-    fontWeight: '600',
+    color: '#FFF',
+    fontWeight: '700',
   },
 });

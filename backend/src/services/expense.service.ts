@@ -1,7 +1,103 @@
 import prisma from "../lib/prisma";
 import type { CreateExpenseInput, UpdateExpenseInput } from "../validators/expense.validator";
 
+/**
+ * Ensures any historical or unsynced records (Fuel, Service, Repair, Parts)
+ * are populated in the Expense table for full analytics and reporting.
+ */
+export async function syncAllRecordExpenses(vehicleId: string) {
+  try {
+    // 1. Sync Fuel Records
+    const fuelRecords = await prisma.fuelRecord.findMany({ where: { vehicleId } });
+    for (const f of fuelRecords) {
+      const exists = await prisma.expense.findFirst({ where: { sourceId: f.id } });
+      if (!exists) {
+        const rateText = f.liters > 0 ? ` @ ₹${(f.cost / f.liters).toFixed(2)}/L` : "";
+        await prisma.expense.create({
+          data: {
+            vehicleId,
+            category: "FUEL",
+            amount: f.cost,
+            date: f.date,
+            notes: `Fuel Fill-up: ${f.liters} L${rateText} (Odo: ${f.odometerReading.toLocaleString()} KM)`,
+            sourceId: f.id,
+            sourceType: "FUEL",
+          },
+        });
+      }
+    }
+
+    // 2. Sync Service Records
+    const serviceRecords = await prisma.serviceRecord.findMany({ where: { vehicleId } });
+    for (const s of serviceRecords) {
+      const exists = await prisma.expense.findFirst({ where: { sourceId: s.id } });
+      if (!exists) {
+        const centerText = s.serviceCenter ? ` @ ${s.serviceCenter}` : "";
+        await prisma.expense.create({
+          data: {
+            vehicleId,
+            category: "SERVICE",
+            amount: s.cost,
+            date: s.date,
+            notes: `Service: ${s.serviceType}${centerText} (${s.odometer.toLocaleString()} KM)`,
+            sourceId: s.id,
+            sourceType: "SERVICE",
+          },
+        });
+      }
+    }
+
+    // 3. Sync Repair Logs
+    const repairLogs = await prisma.repairLog.findMany({ where: { vehicleId } });
+    for (const r of repairLogs) {
+      const exists = await prisma.expense.findFirst({ where: { sourceId: r.id } });
+      if (!exists) {
+        const causeText = r.cause ? ` (Cause: ${r.cause})` : "";
+        await prisma.expense.create({
+          data: {
+            vehicleId,
+            category: "REPAIR",
+            amount: r.cost,
+            date: r.date,
+            notes: `Repair: ${r.description}${causeText} (${r.odometer.toLocaleString()} KM)`,
+            sourceId: r.id,
+            sourceType: "REPAIR",
+          },
+        });
+      }
+    }
+
+    // 4. Sync Spare Parts
+    const partRecords = await prisma.partRecord.findMany({
+      where: { vehicleId, cost: { gt: 0 } },
+    });
+    for (const p of partRecords) {
+      if (p.cost && p.cost > 0) {
+        const exists = await prisma.expense.findFirst({ where: { sourceId: p.id } });
+        if (!exists) {
+          await prisma.expense.create({
+            data: {
+              vehicleId,
+              category: "REPAIR",
+              amount: p.cost,
+              date: p.installDate,
+              notes: `Spare Part: ${p.componentName} (${p.installOdometer.toLocaleString()} KM)`,
+              sourceId: p.id,
+              sourceType: "PART",
+            },
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.log("Error in syncAllRecordExpenses:", e);
+  }
+}
+
 export async function getAllExpenses(vehicleId: string) {
+  // Backfill any unsynced records
+  await syncAllRecordExpenses(vehicleId);
+
   return prisma.expense.findMany({
     where: { vehicleId },
     orderBy: { date: "desc" },
@@ -26,6 +122,7 @@ export async function createExpense(vehicleId: string, data: CreateExpenseInput)
       amount: data.amount,
       date: new Date(data.date),
       notes: data.notes,
+      sourceType: "MANUAL",
     },
   });
 }
@@ -61,6 +158,9 @@ export async function deleteExpense(id: string, vehicleId: string) {
 
 /** Aggregate expense summary grouped by category and month for a vehicle */
 export async function getExpenseSummary(vehicleId: string) {
+  // Ensure all records are synced
+  await syncAllRecordExpenses(vehicleId);
+
   const expenses = await prisma.expense.findMany({
     where: { vehicleId },
     orderBy: { date: "asc" },
@@ -89,6 +189,11 @@ export async function getExpenseSummary(vehicleId: string) {
 
 /** Summary across all vehicles for a user */
 export async function getUserExpenseSummary(userId: string) {
+  const vehicles = await prisma.vehicle.findMany({ where: { userId } });
+  for (const v of vehicles) {
+    await syncAllRecordExpenses(v.id);
+  }
+
   const expenses = await prisma.expense.findMany({
     where: { vehicle: { userId } },
     include: { vehicle: { select: { make: true, model: true, licensePlate: true } } },

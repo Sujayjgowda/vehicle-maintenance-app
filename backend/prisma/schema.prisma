@@ -153,19 +153,22 @@ enum ReminderStatus {
 // ─── Expense ─────────────────────────────────────────────────────────────────
 
 model Expense {
-  id        String          @id @default(uuid())
-  vehicleId String
-  vehicle   Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  category  ExpenseCategory
-  amount    Float
-  date      DateTime
-  notes     String?
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id         String          @id @default(uuid())
+  vehicleId  String
+  vehicle    Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  category   ExpenseCategory
+  amount     Float
+  date       DateTime
+  notes      String?
+  sourceId   String?
+  sourceType String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
 
   @@index([vehicleId])
   @@index([category])
   @@index([date])
+  @@index([sourceId])
 }
 
 enum ExpenseCategory {

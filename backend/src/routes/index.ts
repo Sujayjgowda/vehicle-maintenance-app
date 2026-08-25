@@ -15,6 +15,7 @@ import expenseRoutes from "./expense.routes";
 import partRoutes from "./part.routes";
 import repairRoutes from "./repair.routes";
 import serviceCenterRoutes from "./serviceCenter.routes";
+import aiRoutes from "./ai.routes";
 
 const router = Router();
 
@@ -27,6 +28,9 @@ router.get("/fuel/cities", asyncHandler(fuelController.getCities as any));
 
 // ─── Protected routes (all require JWT) ─────────────────────────────────────
 router.use(authenticate as any);
+
+// AI Assistant & Diagnostics
+router.use("/ai", aiRoutes);
 
 // Vehicles
 router.use("/vehicles", vehicleRoutes);

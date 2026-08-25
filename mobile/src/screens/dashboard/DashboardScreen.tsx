@@ -10,6 +10,7 @@ import { remindersApi } from '../../api/resources';
 import MetricCard from '../../components/MetricCard';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
+import VehicleHealthAiCard from '../../components/VehicleHealthAiCard';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
 export default function DashboardScreen({ navigation }: any) {
@@ -56,7 +57,7 @@ export default function DashboardScreen({ navigation }: any) {
         <View style={styles.headerRow}>
           <View>
             <Text style={styles.greeting}>Hello, {user?.name?.split(' ')[0] || 'User'} 👋</Text>
-            <Text style={styles.subtitle}>Your vehicle overview</Text>
+            <Text style={styles.subtitle}>Garage Grid • Fleet & Expense Overview</Text>
           </View>
           <TouchableOpacity style={styles.profileBtn} onPress={() => navigation.navigate('ProfileTab')}>
             <Ionicons name="person-circle" size={36} color={colors.primary} />
@@ -65,7 +66,12 @@ export default function DashboardScreen({ navigation }: any) {
 
         {v ? (
           <>
-            <TouchableOpacity style={styles.vehicleBanner} onPress={() => navigation.navigate('VehiclesTab', { screen: 'VehicleDetail', params: { vehicleId: v.id } })}>
+            <TouchableOpacity
+              style={styles.vehicleBanner}
+              onPress={() =>
+                navigation.navigate('VehiclesTab', { screen: 'VehicleDetail', params: { vehicleId: v.id } })
+              }
+            >
               <View style={styles.vehicleIcon}>
                 <Ionicons name="car-sport" size={24} color={colors.primary} />
               </View>
@@ -75,6 +81,14 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
             </TouchableOpacity>
+
+            {/* Garage Grid AI Health Predictor Card */}
+            <VehicleHealthAiCard
+              vehicle={v}
+              onOpenAiMechanic={() =>
+                navigation.navigate('VehiclesTab', { screen: 'AiMechanic', params: { vehicle: v } })
+              }
+            />
 
             <View style={styles.metricsGrid}>
               <MetricCard title="Odometer" value={`${v.currentOdometer?.toLocaleString()} KM`} icon="speedometer" highlight />
@@ -128,23 +142,6 @@ export default function DashboardScreen({ navigation }: any) {
             </Card>
           ))
         )}
-
-        {vehicles.length > 1 && (
-          <>
-            <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>Your Vehicles</Text>
-            {vehicles.map((veh: any) => (
-              <TouchableOpacity
-                key={veh.id}
-                style={styles.vehicleItem}
-                onPress={() => navigation.navigate('VehiclesTab', { screen: 'VehicleDetail', params: { vehicleId: veh.id } })}
-              >
-                <Ionicons name="car" size={20} color={colors.primary} />
-                <Text style={styles.vehicleItemText}>{veh.make} {veh.model} — {veh.licensePlate}</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -152,30 +149,53 @@ export default function DashboardScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  container: { padding: spacing.base, paddingBottom: spacing.xxl * 2 },
+  container: { padding: spacing.base, paddingBottom: 100 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
   greeting: { fontSize: fontSize.xl, fontWeight: '800', color: colors.text },
   subtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  profileBtn: { padding: spacing.xs },
-  vehicleBanner: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: borderRadius.lg, padding: spacing.base, marginBottom: spacing.base, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  vehicleIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center', marginRight: spacing.md },
-  vehicleName: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text },
-  vehiclePlate: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: spacing.sm },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md, marginTop: spacing.sm },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text },
-  seeAll: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '600' },
-  reminderCard: { marginBottom: spacing.sm },
+  profileBtn: { padding: 4 },
+  vehicleBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    padding: spacing.base,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    marginBottom: spacing.md,
+  },
+  vehicleIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  vehicleName: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
+  vehiclePlate: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
+  sectionTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },
+  seeAll: { fontSize: fontSize.xs, color: colors.primary, fontWeight: '600' },
+  emptyCard: { alignItems: 'center', padding: spacing.xl, marginVertical: spacing.lg },
+  emptyTitle: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text, marginTop: spacing.md },
+  emptySubtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 4, marginBottom: spacing.lg },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  addBtnText: { color: colors.textOnPrimary, fontWeight: '700', fontSize: fontSize.sm },
+  reminderCard: { marginBottom: spacing.sm, padding: spacing.md },
   reminderRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   reminderIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primary + '15', alignItems: 'center', justifyContent: 'center' },
-  reminderTitle: { fontSize: fontSize.md, fontWeight: '600', color: colors.text },
+  reminderTitle: { fontSize: fontSize.sm, fontWeight: '700', color: colors.text },
   reminderSub: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
-  emptyCard: { alignItems: 'center', paddingVertical: spacing.xxl },
-  emptyTitle: { fontSize: fontSize.lg, fontWeight: '600', color: colors.textSecondary, marginTop: spacing.md },
-  emptySubtitle: { fontSize: fontSize.sm, color: colors.textMuted, marginTop: spacing.xs },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderRadius: borderRadius.md, marginTop: spacing.base },
-  addBtnText: { color: colors.textOnPrimary, fontWeight: '600', fontSize: fontSize.md },
-  noData: { textAlign: 'center', color: colors.textSecondary, fontSize: fontSize.md, paddingVertical: spacing.sm },
-  vehicleItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, padding: spacing.base, borderRadius: borderRadius.md, marginBottom: spacing.sm },
-  vehicleItemText: { flex: 1, fontSize: fontSize.md, color: colors.text, fontWeight: '500' },
+  noData: { textAlign: 'center', color: colors.textSecondary, padding: spacing.md, fontSize: fontSize.sm },
 });

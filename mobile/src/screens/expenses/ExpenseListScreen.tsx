@@ -15,24 +15,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import { expensesApi } from '../../api/resources';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
+import MonthlyExpenseDonutChart, { CATEGORY_CONFIG } from '../../components/MonthlyExpenseDonutChart';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
-const categoryInfo: Record<string, { label: string; icon: any; color: string }> = {
-  FUEL: { label: 'Fuel', icon: 'flame', color: colors.fuel },
-  SERVICE: { label: 'Service', icon: 'build', color: colors.service },
-  REPAIR: { label: 'Repair', icon: 'hammer', color: colors.error },
-  TOLL: { label: 'Toll', icon: 'navigate-circle', color: '#0D9488' },
-  PARKING: { label: 'Parking', icon: 'car', color: '#6366F1' },
-  INSURANCE: { label: 'Insurance', icon: 'shield-checkmark', color: '#10B981' },
-  OTHER: { label: 'Other', icon: 'receipt', color: colors.other },
-};
-
-const filterTabs = ['ALL', 'TOLL', 'PARKING', 'FUEL', 'SERVICE', 'REPAIR', 'INSURANCE', 'OTHER'];
+const filterTabs = ['ALL', 'FUEL', 'SERVICE', 'REPAIR', 'TOLL', 'PARKING', 'INSURANCE', 'PARTS', 'OTHER'];
 
 export default function ExpenseListScreen({ route, navigation }: any) {
   const { vehicleId } = route.params;
   const [expenses, setExpenses] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>(null);
+  const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [selectedFilter, setSelectedFilter] = useState('ALL');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -52,17 +44,29 @@ export default function ExpenseListScreen({ route, navigation }: any) {
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
+  // Filter expenses by selected Month AND selected Category Filter
   const filteredExpenses = useMemo(() => {
-    if (selectedFilter === 'ALL') return expenses;
-    return expenses.filter((e) => e.category === selectedFilter);
-  }, [expenses, selectedFilter]);
+    return expenses.filter((e) => {
+      // Month match
+      if (selectedMonth !== 'ALL') {
+        const d = new Date(e.date);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (key !== selectedMonth) return false;
+      }
+      // Category match
+      if (selectedFilter !== 'ALL') {
+        if (e.category !== selectedFilter) return false;
+      }
+      return true;
+    });
+  }, [expenses, selectedMonth, selectedFilter]);
 
   const handleEdit = (record: any) => {
     navigation.navigate('AddExpense', { vehicleId, record });
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense?', [
+    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense record?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -81,13 +85,14 @@ export default function ExpenseListScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* ─── Header ─── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: spacing.sm }}>
-          <Text style={styles.title}>Expenses & Costs</Text>
-          <Text style={styles.subTitle}>Auto-synced from all logs & custom entries</Text>
+          <Text style={styles.title}>Garage Grid Expenses</Text>
+          <Text style={styles.subTitle}>Monthly Breakdown & Auto-Synced Costs</Text>
         </View>
         <TouchableOpacity
           style={styles.addBtn}
@@ -97,62 +102,84 @@ export default function ExpenseListScreen({ route, navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {summary && (
-        <View style={styles.summaryBanner}>
-          <Text style={styles.summaryTotal}>₹{Math.round(summary.totalExpenses).toLocaleString()}</Text>
-          <Text style={styles.summaryLabel}>
-            Total All Expenses • {summary.count} records (Fuel + Services + Tolls + Repairs)
-          </Text>
-        </View>
-      )}
-
-      {/* Category Filter Horizontal Scroll */}
-      <View style={styles.filterContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
-        >
-          {filterTabs.map((tab) => {
-            const isActive = selectedFilter === tab;
-            const tabInfo = categoryInfo[tab];
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[
-                  styles.filterChip,
-                  isActive && styles.filterChipActive,
-                  isActive && tabInfo && { backgroundColor: tabInfo.color, borderColor: tabInfo.color },
-                ]}
-                onPress={() => setSelectedFilter(tab)}
-              >
-                {tabInfo ? (
-                  <Ionicons
-                    name={tabInfo.icon}
-                    size={14}
-                    color={isActive ? '#FFF' : tabInfo.color}
-                    style={{ marginRight: 4 }}
-                  />
-                ) : null}
-                <Text
-                  style={[
-                    styles.filterText,
-                    isActive && styles.filterTextActive,
-                  ]}
-                >
-                  {tab === 'ALL' ? 'All Costs' : tabInfo?.label || tab}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
       <FlatList
         data={filteredExpenses}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        ListHeaderComponent={
+          <>
+            {/* 1. Monthly Expense Donut Chart & Breakdown */}
+            <MonthlyExpenseDonutChart
+              expenses={expenses}
+              selectedMonth={selectedMonth}
+              onSelectMonth={(m) => {
+                setSelectedMonth(m);
+              }}
+              onSelectCategory={(cat) => {
+                setSelectedFilter(cat);
+              }}
+              selectedCategory={selectedFilter}
+            />
+
+            {/* 2. Category Filter Strip */}
+            <View style={styles.filterContainer}>
+              <View style={styles.filterHeaderRow}>
+                <Text style={styles.sectionHeader}>FILTER EXPENSES</Text>
+                {selectedFilter !== 'ALL' && (
+                  <TouchableOpacity onPress={() => setSelectedFilter('ALL')}>
+                    <Text style={styles.resetFilterText}>Reset Filter</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterScroll}
+              >
+                {filterTabs.map((tab) => {
+                  const isActive = selectedFilter === tab;
+                  const tabInfo = CATEGORY_CONFIG[tab];
+                  return (
+                    <TouchableOpacity
+                      key={tab}
+                      style={[
+                        styles.filterChip,
+                        isActive && styles.filterChipActive,
+                        isActive && tabInfo && { backgroundColor: tabInfo.color, borderColor: tabInfo.color },
+                      ]}
+                      onPress={() => setSelectedFilter(tab)}
+                    >
+                      {tabInfo ? (
+                        <Ionicons
+                          name={tabInfo.icon}
+                          size={13}
+                          color={isActive ? '#FFF' : tabInfo.color}
+                          style={{ marginRight: 4 }}
+                        />
+                      ) : null}
+                      <Text
+                        style={[
+                          styles.filterText,
+                          isActive && styles.filterTextActive,
+                        ]}
+                      >
+                        {tab === 'ALL' ? 'All Costs' : tabInfo?.label || tab}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            <View style={styles.recordsHeaderRow}>
+              <Text style={styles.recordsCountLabel}>
+                {filteredExpenses.length} {filteredExpenses.length === 1 ? 'Transaction' : 'Transactions'}
+                {selectedMonth !== 'ALL' ? ` in ${selectedMonth}` : ''}
+              </Text>
+            </View>
+          </>
+        }
         ListEmptyComponent={
           <EmptyState
             icon="wallet-outline"
@@ -165,9 +192,9 @@ export default function ExpenseListScreen({ route, navigation }: any) {
           />
         }
         renderItem={({ item }) => {
-          const cat = categoryInfo[item.category] || {
+          const cat = CATEGORY_CONFIG[item.category] || {
             label: item.category,
-            icon: 'wallet',
+            icon: 'wallet' as any,
             color: colors.other,
           };
           const isAutoSynced = item.sourceType && item.sourceType !== 'MANUAL';
@@ -188,20 +215,20 @@ export default function ExpenseListScreen({ route, navigation }: any) {
                         </View>
                       )}
                     </View>
-                    <Text style={styles.cardSub}>{new Date(item.date).toLocaleDateString()}</Text>
+                    <Text style={styles.cardSub}>{new Date(item.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
                     {item.notes ? <Text style={styles.cardNotes}>{item.notes}</Text> : null}
                   </View>
-                  <Text style={styles.cardCost}>₹{item.amount.toLocaleString()}</Text>
+                  <Text style={styles.cardCost}>₹{Number(item.amount).toLocaleString()}</Text>
                 </View>
 
                 {/* Action row: Edit & Delete */}
                 <View style={styles.cardActions}>
                   <TouchableOpacity style={styles.actionEditBtn} onPress={() => handleEdit(item)}>
-                    <Ionicons name="create-outline" size={16} color={colors.primary} />
+                    <Ionicons name="create-outline" size={14} color={colors.primary} />
                     <Text style={styles.actionEditText}>Edit</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item.id)}>
-                    <Ionicons name="trash-outline" size={16} color={colors.error} />
+                    <Ionicons name="trash-outline" size={15} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               </Card>
@@ -233,18 +260,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  summaryBanner: {
-    alignItems: 'center',
-    marginHorizontal: spacing.base,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.md,
-    padding: spacing.base,
-  },
-  summaryTotal: { fontSize: fontSize.xxl, fontWeight: '800', color: '#FFF' },
-  summaryLabel: { fontSize: fontSize.xs, color: 'rgba(255,255,255,0.85)', marginTop: 2, textAlign: 'center' },
   filterContainer: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  filterHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.base,
+    marginBottom: spacing.xs,
+  },
+  sectionHeader: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textSecondary,
+    letterSpacing: 0.5,
+  },
+  resetFilterText: {
+    fontSize: fontSize.xs,
+    color: colors.primary,
+    fontWeight: '600',
   },
   filterScroll: {
     paddingHorizontal: spacing.base,
@@ -272,8 +307,17 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: '#FFF',
   },
-  list: { padding: spacing.base, paddingTop: 0, paddingBottom: 100 },
-  card: { marginBottom: spacing.sm, padding: spacing.md },
+  recordsHeaderRow: {
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.xs + 2,
+  },
+  recordsCountLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  list: { paddingBottom: 100 },
+  card: { marginHorizontal: spacing.base, marginBottom: spacing.sm, padding: spacing.md },
   cardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   cardIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   cardTitle: { fontSize: fontSize.md, fontWeight: '700', color: colors.text },

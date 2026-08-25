@@ -21,6 +21,7 @@ import PartListScreen from '../screens/parts/PartListScreen';
 import AddPartScreen from '../screens/parts/AddPartScreen';
 import RepairListScreen from '../screens/repairs/RepairListScreen';
 import AddRepairScreen from '../screens/repairs/AddRepairScreen';
+import AiMechanicScreen from '../screens/ai/AiMechanicScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -45,6 +46,7 @@ function VehiclesStackNavigator() {
       <VehicleStack.Screen name="AddPart" component={AddPartScreen} options={{ headerShown: true, title: 'Add Part', headerTintColor: colors.primary }} />
       <VehicleStack.Screen name="RepairList" component={RepairListScreen} />
       <VehicleStack.Screen name="AddRepair" component={AddRepairScreen} options={{ headerShown: true, title: 'Add Repair', headerTintColor: colors.primary }} />
+      <VehicleStack.Screen name="AiMechanic" component={AiMechanicScreen} />
     </VehicleStack.Navigator>
   );
 }
@@ -63,28 +65,36 @@ export default function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarIcon: ({ focused, color, size }) => {
+          let iconName: any;
+          if (route.name === 'DashboardTab') {
+            iconName = focused ? 'speedometer' : 'speedometer-outline';
+          } else if (route.name === 'VehiclesTab') {
+            iconName = focused ? 'car' : 'car-outline';
+          } else if (route.name === 'RemindersTab') {
+            iconName = focused ? 'notifications' : 'notifications-outline';
+          } else if (route.name === 'ProfileTab') {
+            iconName = focused ? 'person' : 'person-outline';
+          }
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: fontSize.xs, fontWeight: '600' },
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.borderLight,
-          height: 85,
-          paddingTop: 8,
-          paddingBottom: 28,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 6,
         },
-        tabBarIcon: ({ color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap = 'home';
-          if (route.name === 'DashboardTab') iconName = 'home';
-          else if (route.name === 'VehiclesTab') iconName = 'car-sport';
-          else if (route.name === 'RemindersTab') iconName = 'notifications';
-          else if (route.name === 'ProfileTab') iconName = 'person';
-          return <Ionicons name={iconName} size={size} color={color} />;
+        tabBarLabelStyle: {
+          fontSize: fontSize.xs,
+          fontWeight: '600',
         },
       })}
     >
-      <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="VehiclesTab" component={VehiclesStackNavigator} options={{ tabBarLabel: 'Vehicles' }} />
+      <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
+      <Tab.Screen name="VehiclesTab" component={VehiclesStackNavigator} options={{ tabBarLabel: 'My Fleet' }} />
       <Tab.Screen name="RemindersTab" component={RemindersStackNavigator} options={{ tabBarLabel: 'Reminders' }} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>

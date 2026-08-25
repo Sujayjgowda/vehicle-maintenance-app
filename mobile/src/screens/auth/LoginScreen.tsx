@@ -42,8 +42,8 @@ export default function LoginScreen({ navigation }: any) {
             <View style={styles.iconWrap}>
               <Ionicons name="car-sport" size={40} color={colors.primary} />
             </View>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to manage your vehicles</Text>
+            <Text style={styles.title}>Garage Grid</Text>
+            <Text style={styles.subtitle}>Smart Vehicle Maintenance & Expense Tracker</Text>
           </View>
 
           {error ? (

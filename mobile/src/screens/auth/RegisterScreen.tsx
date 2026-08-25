@@ -47,8 +47,8 @@ export default function RegisterScreen({ navigation }: any) {
             <View style={styles.iconWrap}>
               <Ionicons name="person-add" size={36} color={colors.primary} />
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Start tracking your vehicles today</Text>
+            <Text style={styles.title}>Join Garage Grid</Text>
+            <Text style={styles.subtitle}>Smart vehicle health & maintenance tracking</Text>
           </View>
 
           {error ? (

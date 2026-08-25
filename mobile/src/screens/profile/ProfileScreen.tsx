@@ -75,7 +75,12 @@ export default function ProfileScreen() {
           </View>
         </Card>
 
-        <Button title="Sign Out" onPress={logout} variant="danger" style={{ marginTop: spacing.lg }} />
+        <View style={{ alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.xs }}>
+          <Text style={{ fontSize: fontSize.sm, fontWeight: '700', color: colors.textSecondary }}>Garage Grid v1.0.0</Text>
+          <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>Real-time Fleet & Maintenance Ecosystem</Text>
+        </View>
+
+        <Button title="Sign Out" onPress={logout} variant="danger" style={{ marginTop: spacing.md }} />
       </ScrollView>
     </SafeAreaView>
   );

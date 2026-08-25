@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { isAfter, startOfDay } from 'date-fns';
 import { fuelApi } from '../../api/fuel';
+import { getLiveCityPrice } from '../../api/liveFuelService';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import DatePickerInput from '../../components/DatePickerInput';
@@ -45,7 +46,12 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
   const [date, setDate] = useState<Date>(record ? new Date(record.date) : new Date());
   const [selectedCity, setSelectedCity] = useState('Bengaluru');
-  const [livePrices, setLivePrices] = useState<any>(null);
+  const [livePrices, setLivePrices] = useState<{ petrol: number; diesel: number; cng: number; city: string }>({
+    city: 'Bengaluru',
+    petrol: 110.93,
+    diesel: 98.80,
+    cng: 79.50,
+  });
   const [fetchingPrices, setFetchingPrices] = useState(false);
 
   // City Search Modal State
@@ -55,7 +61,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
   const [fuelType, setFuelType] = useState('PETROL');
   const [ratePerLiter, setRatePerLiter] = useState(
-    record && record.liters > 0 ? (record.cost / record.liters).toFixed(2) : '102.86'
+    record && record.liters > 0 ? (record.cost / record.liters).toFixed(2) : '110.93'
   );
   const [liters, setLiters] = useState(record ? String(record.liters) : '');
   const [cost, setCost] = useState(record ? String(record.cost) : '');
@@ -75,41 +81,47 @@ export default function AddFuelScreen({ route, navigation }: any) {
       if (Array.isArray(res.data)) {
         setAllCities(res.data);
       }
-    }).catch((e) => console.log('Error loading cities:', e));
+    }).catch(() => {});
   }, []);
 
-  // Fetch real-time live daily fuel rates from fuel.indianapi.in
-  const fetchLivePrices = useCallback(async (city: string) => {
+  // Fetch real-time live daily fuel rates
+  const loadPricesForCity = async (city: string) => {
     setFetchingPrices(true);
     try {
-      const res = await fuelApi.getLivePrices(city);
-      if (res.data?.selectedCity) {
-        setLivePrices(res.data.selectedCity);
-        // Auto-update rate for newly selected city
-        if (fuelType === 'PETROL' && res.data.selectedCity.petrol) {
-          const pRate = res.data.selectedCity.petrol.toFixed(2);
+      const priceData = await getLiveCityPrice(city);
+      setLivePrices(priceData);
+      // Auto update current rate if not in edit mode
+      if (!isEditing) {
+        if (fuelType === 'PETROL' && priceData.petrol > 0) {
+          const pRate = priceData.petrol.toFixed(2);
           setRatePerLiter(pRate);
-          if (liters && parseFloat(liters) > 0) {
-            setCost((parseFloat(liters) * parseFloat(pRate)).toFixed(2));
-          }
-        } else if (fuelType === 'DIESEL' && res.data.selectedCity.diesel) {
-          const dRate = res.data.selectedCity.diesel.toFixed(2);
+          setLiters((prevLiters) => {
+            if (prevLiters && parseFloat(prevLiters) > 0) {
+              setCost((parseFloat(prevLiters) * parseFloat(pRate)).toFixed(2));
+            }
+            return prevLiters;
+          });
+        } else if (fuelType === 'DIESEL' && priceData.diesel > 0) {
+          const dRate = priceData.diesel.toFixed(2);
           setRatePerLiter(dRate);
-          if (liters && parseFloat(liters) > 0) {
-            setCost((parseFloat(liters) * parseFloat(dRate)).toFixed(2));
-          }
+          setLiters((prevLiters) => {
+            if (prevLiters && parseFloat(prevLiters) > 0) {
+              setCost((parseFloat(prevLiters) * parseFloat(dRate)).toFixed(2));
+            }
+            return prevLiters;
+          });
         }
       }
     } catch (e) {
-      console.log('Error fetching live fuel prices:', e);
+      console.log('Error loading prices for city:', e);
     } finally {
       setFetchingPrices(false);
     }
-  }, [fuelType, liters]);
+  };
 
   useEffect(() => {
-    fetchLivePrices(selectedCity);
-  }, [selectedCity, fetchLivePrices]);
+    loadPricesForCity(selectedCity);
+  }, [selectedCity]);
 
   // Select fuel type from Live Cards
   const handleSelectLiveRate = (type: string, rate: number) => {
@@ -240,10 +252,10 @@ export default function AddFuelScreen({ route, navigation }: any) {
           <View style={styles.liveHeaderRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <View style={styles.livePulse} />
-              <Text style={styles.sectionLabel}>REAL-TIME FUEL PRICES (INDIANAPI.IN)</Text>
+              <Text style={styles.sectionLabel}>LIVE FUEL PRICES (INDIANAPI.IN)</Text>
             </View>
             <TouchableOpacity
-              onPress={() => fetchLivePrices(selectedCity)}
+              onPress={() => loadPricesForCity(selectedCity)}
               style={styles.refreshBtn}
             >
               {fetchingPrices ? (
@@ -291,14 +303,14 @@ export default function AddFuelScreen({ route, navigation }: any) {
                 styles.priceCard,
                 fuelType === 'PETROL' && styles.priceCardActivePetrol,
               ]}
-              onPress={() => handleSelectLiveRate('PETROL', livePrices?.petrol || 102.86)}
+              onPress={() => handleSelectLiveRate('PETROL', livePrices.petrol)}
             >
               <View style={styles.priceCardHeader}>
                 <Ionicons name="speedometer-outline" size={16} color={colors.fuel} />
                 <Text style={styles.priceCardType}>PETROL</Text>
               </View>
               <Text style={styles.priceCardRate}>
-                ₹{livePrices ? livePrices.petrol.toFixed(2) : '102.86'}
+                ₹{livePrices.petrol.toFixed(2)}
               </Text>
               <Text style={styles.priceCardSub}>/ Litre ({selectedCity})</Text>
               {fuelType === 'PETROL' && (
@@ -315,14 +327,14 @@ export default function AddFuelScreen({ route, navigation }: any) {
                 styles.priceCard,
                 fuelType === 'DIESEL' && styles.priceCardActiveDiesel,
               ]}
-              onPress={() => handleSelectLiveRate('DIESEL', livePrices?.diesel || 88.94)}
+              onPress={() => handleSelectLiveRate('DIESEL', livePrices.diesel)}
             >
               <View style={styles.priceCardHeader}>
                 <Ionicons name="water-outline" size={16} color={colors.primary} />
                 <Text style={styles.priceCardType}>DIESEL</Text>
               </View>
               <Text style={styles.priceCardRate}>
-                ₹{livePrices ? livePrices.diesel.toFixed(2) : '88.94'}
+                ₹{livePrices.diesel.toFixed(2)}
               </Text>
               <Text style={styles.priceCardSub}>/ Litre ({selectedCity})</Text>
               {fuelType === 'DIESEL' && (
@@ -339,14 +351,14 @@ export default function AddFuelScreen({ route, navigation }: any) {
                 styles.priceCard,
                 fuelType === 'CNG' && styles.priceCardActiveCng,
               ]}
-              onPress={() => handleSelectLiveRate('CNG', livePrices?.cng || 79.50)}
+              onPress={() => handleSelectLiveRate('CNG', livePrices.cng)}
             >
               <View style={styles.priceCardHeader}>
                 <Ionicons name="flame-outline" size={16} color={colors.success} />
                 <Text style={styles.priceCardType}>CNG</Text>
               </View>
               <Text style={styles.priceCardRate}>
-                ₹{livePrices ? (livePrices.cng ? livePrices.cng.toFixed(2) : '79.50') : '79.50'}
+                ₹{livePrices.cng.toFixed(2)}
               </Text>
               <Text style={styles.priceCardSub}>/ Kg</Text>
               {fuelType === 'CNG' && (
@@ -363,7 +375,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
             label="Fuel Rate (₹/L) — Auto-filled from live API or customize"
             value={ratePerLiter}
             onChangeText={handleRateChange}
-            placeholder="e.g. 102.86"
+            placeholder="e.g. 110.93"
             keyboardType="decimal-pad"
           />
 

@@ -21,8 +21,9 @@ const router = Router();
 // ─── Public routes ──────────────────────────────────────────────────────────
 router.use("/auth", authRoutes);
 
-// Public or authenticated live fuel rates endpoint
+// Public live fuel rates & city list endpoints (no auth required)
 router.get("/fuel/live-prices", asyncHandler(fuelController.getLivePrices as any));
+router.get("/fuel/cities", asyncHandler(fuelController.getCities as any));
 
 // ─── Protected routes (all require JWT) ─────────────────────────────────────
 router.use(authenticate as any);

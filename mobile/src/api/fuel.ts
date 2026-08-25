@@ -8,4 +8,5 @@ export const fuelApi = {
   delete: (vehicleId: string, id: string) => api.delete(`/vehicles/${vehicleId}/fuel/${id}`),
   getSummary: (vehicleId: string) => api.get(`/vehicles/${vehicleId}/fuel/summary`),
   getLivePrices: (city?: string) => api.get('/fuel/live-prices', { params: { city } }),
+  getCities: () => api.get('/fuel/cities'),
 };

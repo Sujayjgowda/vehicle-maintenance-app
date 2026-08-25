@@ -37,3 +37,8 @@ export async function getLivePrices(req: Request, res: Response) {
   const prices = await fuelService.getLiveFuelPrices(city);
   res.json(prices);
 }
+
+export async function getCities(req: Request, res: Response) {
+  const cities = await fuelService.getIndianApiCities();
+  res.json(cities);
+}

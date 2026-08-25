@@ -9,6 +9,9 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +22,7 @@ import Button from '../../components/Button';
 import DatePickerInput from '../../components/DatePickerInput';
 import { colors, spacing, borderRadius, fontSize } from '../../theme/colors';
 
-const DEFAULT_CITIES = [
+const POPULAR_CITIES = [
   'Bengaluru',
   'Delhi',
   'Mumbai',
@@ -27,6 +30,8 @@ const DEFAULT_CITIES = [
   'Chennai',
   'Kolkata',
   'Pune',
+  'Mysore',
+  'Mangalore',
   'Ahmedabad',
   'Jaipur',
   'Lucknow',
@@ -42,6 +47,11 @@ export default function AddFuelScreen({ route, navigation }: any) {
   const [selectedCity, setSelectedCity] = useState('Bengaluru');
   const [livePrices, setLivePrices] = useState<any>(null);
   const [fetchingPrices, setFetchingPrices] = useState(false);
+
+  // City Search Modal State
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [allCities, setAllCities] = useState<Array<{ name: string; value: string }>>([]);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
 
   const [fuelType, setFuelType] = useState('PETROL');
   const [ratePerLiter, setRatePerLiter] = useState(
@@ -59,20 +69,35 @@ export default function AddFuelScreen({ route, navigation }: any) {
     });
   }, [isEditing, navigation]);
 
-  // Fetch live daily fuel rates
+  // Load all available cities for modal
+  useEffect(() => {
+    fuelApi.getCities().then((res) => {
+      if (Array.isArray(res.data)) {
+        setAllCities(res.data);
+      }
+    }).catch((e) => console.log('Error loading cities:', e));
+  }, []);
+
+  // Fetch real-time live daily fuel rates from fuel.indianapi.in
   const fetchLivePrices = useCallback(async (city: string) => {
     setFetchingPrices(true);
     try {
       const res = await fuelApi.getLivePrices(city);
       if (res.data?.selectedCity) {
         setLivePrices(res.data.selectedCity);
-        // If not editing, auto-set default petrol rate for the city
-        if (!record && fuelType === 'PETROL') {
-          const pRate = String(res.data.selectedCity.petrol);
+        // Auto-update rate for newly selected city
+        if (fuelType === 'PETROL' && res.data.selectedCity.petrol) {
+          const pRate = res.data.selectedCity.petrol.toFixed(2);
           setRatePerLiter(pRate);
-        } else if (!record && fuelType === 'DIESEL') {
-          const dRate = String(res.data.selectedCity.diesel);
+          if (liters && parseFloat(liters) > 0) {
+            setCost((parseFloat(liters) * parseFloat(pRate)).toFixed(2));
+          }
+        } else if (fuelType === 'DIESEL' && res.data.selectedCity.diesel) {
+          const dRate = res.data.selectedCity.diesel.toFixed(2);
           setRatePerLiter(dRate);
+          if (liters && parseFloat(liters) > 0) {
+            setCost((parseFloat(liters) * parseFloat(dRate)).toFixed(2));
+          }
         }
       }
     } catch (e) {
@@ -80,7 +105,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
     } finally {
       setFetchingPrices(false);
     }
-  }, [record, fuelType]);
+  }, [fuelType, liters]);
 
   useEffect(() => {
     fetchLivePrices(selectedCity);
@@ -135,6 +160,10 @@ export default function AddFuelScreen({ route, navigation }: any) {
       ? (parseFloat(cost) / parseFloat(liters)).toFixed(2)
       : ratePerLiter || '—';
 
+  const filteredCities = allCities.filter((c) =>
+    c.name.toLowerCase().includes(citySearchQuery.toLowerCase())
+  );
+
   const handleSubmit = async () => {
     // Validate Future Date
     if (isAfter(startOfDay(date), startOfDay(new Date()))) {
@@ -175,7 +204,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
           cost: parsedCost,
           odometerReading: parsedOdometer,
         });
-        Alert.alert('Success', 'Fuel record updated successfully! ⛽', [
+        Alert.alert('Success', 'Fuel record updated & synced to Expenses! ⛽', [
           { text: 'OK', onPress: () => navigation.goBack() },
         ]);
       } else {
@@ -207,11 +236,11 @@ export default function AddFuelScreen({ route, navigation }: any) {
             helperText="Default is today. Future dates are restricted."
           />
 
-          {/* 2. Live Fuel Rates Widget (Google Index) */}
+          {/* 2. Real-Time Fuel Rates from fuel.indianapi.in */}
           <View style={styles.liveHeaderRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={styles.liveIndicator} />
-              <Text style={styles.sectionLabel}>LIVE FUEL PRICES (TODAY)</Text>
+              <View style={styles.livePulse} />
+              <Text style={styles.sectionLabel}>REAL-TIME FUEL PRICES (INDIANAPI.IN)</Text>
             </View>
             <TouchableOpacity
               onPress={() => fetchLivePrices(selectedCity)}
@@ -220,30 +249,39 @@ export default function AddFuelScreen({ route, navigation }: any) {
               {fetchingPrices ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
-                <Ionicons name="refresh" size={16} color={colors.primary} />
+                <Ionicons name="refresh" size={18} color={colors.primary} />
               )}
             </TouchableOpacity>
           </View>
 
-          {/* City Selection Chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.cityScroll}
-          >
-            {DEFAULT_CITIES.map((c) => {
-              const active = selectedCity.toLowerCase() === c.toLowerCase();
-              return (
-                <TouchableOpacity
-                  key={c}
-                  style={[styles.cityChip, active && styles.cityChipActive]}
-                  onPress={() => setSelectedCity(c)}
-                >
-                  <Text style={[styles.cityText, active && styles.cityTextActive]}>{c}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          {/* City Selection Bar + Search More Button */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.cityScroll}
+            >
+              {POPULAR_CITIES.map((c) => {
+                const active = selectedCity.toLowerCase() === c.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.cityChip, active && styles.cityChipActive]}
+                    onPress={() => setSelectedCity(c)}
+                  >
+                    <Text style={[styles.cityText, active && styles.cityTextActive]}>{c}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.moreCitiesBtn}
+              onPress={() => setCityModalVisible(true)}
+            >
+              <Ionicons name="search" size={14} color={colors.primary} />
+              <Text style={styles.moreCitiesText}>More</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Live Price Cards */}
           <View style={styles.priceCardsRow}>
@@ -262,10 +300,10 @@ export default function AddFuelScreen({ route, navigation }: any) {
               <Text style={styles.priceCardRate}>
                 ₹{livePrices ? livePrices.petrol.toFixed(2) : '102.86'}
               </Text>
-              <Text style={styles.priceCardSub}>/ Litre</Text>
+              <Text style={styles.priceCardSub}>/ Litre ({selectedCity})</Text>
               {fuelType === 'PETROL' && (
                 <View style={styles.selectedBadge}>
-                  <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+                  <Ionicons name="checkmark-circle" size={12} color="#FFF" />
                   <Text style={styles.selectedBadgeText}>Selected</Text>
                 </View>
               )}
@@ -286,10 +324,10 @@ export default function AddFuelScreen({ route, navigation }: any) {
               <Text style={styles.priceCardRate}>
                 ₹{livePrices ? livePrices.diesel.toFixed(2) : '88.94'}
               </Text>
-              <Text style={styles.priceCardSub}>/ Litre</Text>
+              <Text style={styles.priceCardSub}>/ Litre ({selectedCity})</Text>
               {fuelType === 'DIESEL' && (
                 <View style={styles.selectedBadge}>
-                  <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+                  <Ionicons name="checkmark-circle" size={12} color="#FFF" />
                   <Text style={styles.selectedBadgeText}>Selected</Text>
                 </View>
               )}
@@ -313,7 +351,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
               <Text style={styles.priceCardSub}>/ Kg</Text>
               {fuelType === 'CNG' && (
                 <View style={styles.selectedBadge}>
-                  <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+                  <Ionicons name="checkmark-circle" size={12} color="#FFF" />
                   <Text style={styles.selectedBadgeText}>Selected</Text>
                 </View>
               )}
@@ -322,7 +360,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
           {/* 3. Fuel Rate / Price Per Liter (Editable) */}
           <Input
-            label="Fuel Rate (₹/L) — Tap above to auto-fill or enter custom"
+            label="Fuel Rate (₹/L) — Auto-filled from live API or customize"
             value={ratePerLiter}
             onChangeText={handleRateChange}
             placeholder="e.g. 102.86"
@@ -388,6 +426,57 @@ export default function AddFuelScreen({ route, navigation }: any) {
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* City Search Modal */}
+      <Modal
+        visible={cityModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setCityModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Indian City / District</Text>
+              <TouchableOpacity onPress={() => setCityModalVisible(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchBarContainer}>
+              <Ionicons name="search" size={18} color={colors.textMuted} style={{ marginRight: spacing.xs }} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search city (e.g. Mysore, Jaipur, Patna)..."
+                placeholderTextColor={colors.textMuted}
+                value={citySearchQuery}
+                onChangeText={setCitySearchQuery}
+                autoFocus
+              />
+            </View>
+
+            <FlatList
+              data={filteredCities}
+              keyExtractor={(item) => item.value}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.cityListItem}
+                  onPress={() => {
+                    setSelectedCity(item.name);
+                    setCityModalVisible(false);
+                    setCitySearchQuery('');
+                  }}
+                >
+                  <Text style={styles.cityListName}>{item.name}</Text>
+                  {selectedCity.toLowerCase() === item.name.toLowerCase() && (
+                    <Ionicons name="checkmark" size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -407,11 +496,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
   },
-  liveIndicator: {
+  livePulse: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.success,
+    backgroundColor: '#10B981',
   },
   sectionLabel: {
     fontSize: fontSize.xs,
@@ -426,7 +515,6 @@ const styles = StyleSheet.create({
   cityScroll: {
     gap: spacing.xs,
     paddingVertical: spacing.xs,
-    marginBottom: spacing.sm,
   },
   cityChip: {
     paddingHorizontal: spacing.md,
@@ -448,10 +536,28 @@ const styles = StyleSheet.create({
   cityTextActive: {
     color: '#FFF',
   },
+  moreCitiesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10',
+    marginLeft: spacing.xs,
+  },
+  moreCitiesText: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   priceCardsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    marginTop: spacing.xs,
   },
   priceCard: {
     flex: 1,
@@ -492,8 +598,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   priceCardSub: {
-    fontSize: 10,
+    fontSize: 9,
     color: colors.textMuted,
+    marginTop: 1,
   },
   selectedBadge: {
     flexDirection: 'row',
@@ -543,5 +650,58 @@ const styles = StyleSheet.create({
     width: 1,
     height: 24,
     backgroundColor: colors.borderLight,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    padding: spacing.base,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.text,
+    paddingVertical: spacing.xs,
+  },
+  cityListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  cityListName: {
+    fontSize: fontSize.md,
+    color: colors.text,
+    fontWeight: '500',
   },
 });

@@ -40,8 +40,8 @@ export default function DashboardScreen({ navigation }: any) {
   const { user } = useAuth();
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [fuelSummary, setFuelSummary] = useState<any>(null);
-  const [expenses, setExpenses] = useState<any[]>([]);
+  const [allExpenses, setAllExpenses] = useState<any[]>([]);
+  const [allFuelSummaries, setAllFuelSummaries] = useState<any[]>([]);
   const [upcomingReminders, setUpcomingReminders] = useState<any[]>([]);
   const [livePrices, setLivePrices] = useState<CityPrice | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,17 +62,25 @@ export default function DashboardScreen({ navigation }: any) {
   const loadData = useCallback(async () => {
     try {
       const vRes = await vehiclesApi.getAll();
-      setVehicles(vRes.data);
+      const vehicleList = vRes.data || [];
+      setVehicles(vehicleList);
 
-      if (vRes.data.length > 0) {
-        const v = vRes.data[0];
-        const [fRes, eRes] = await Promise.all([
-          fuelApi.getSummary(v.id),
-          expensesApi.getAll(v.id),
-        ]);
-        setFuelSummary(fRes.data);
-        setExpenses(eRes.data || []);
-      }
+      // Fetch expenses and fuel summaries for ALL vehicles
+      const expensePromises = vehicleList.map((v: any) =>
+        expensesApi.getAll(v.id).then((r: any) => r.data || []).catch(() => [])
+      );
+      const fuelPromises = vehicleList.map((v: any) =>
+        fuelApi.getSummary(v.id).then((r: any) => r.data).catch(() => null)
+      );
+
+      const [allExp, allFuel] = await Promise.all([
+        Promise.all(expensePromises),
+        Promise.all(fuelPromises),
+      ]);
+
+      // Flatten all expenses from all vehicles
+      setAllExpenses(allExp.flat());
+      setAllFuelSummaries(allFuel.filter(Boolean));
 
       const rRes = await remindersApi.getUpcoming();
       setUpcomingReminders(rRes.data || []);
@@ -97,18 +105,18 @@ export default function DashboardScreen({ navigation }: any) {
     setRefreshing(false);
   };
 
-  // ─── Expense calculations ───
+  // ─── Expense calculations (ALL vehicles combined) ───
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const prevMonth = now.getMonth() === 0
     ? `${now.getFullYear() - 1}-12`
     : `${now.getFullYear()}-${String(now.getMonth()).padStart(2, '0')}`;
 
-  const thisMonthExpenses = expenses.filter((e) => {
+  const thisMonthExpenses = allExpenses.filter((e) => {
     const d = new Date(e.date);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === currentMonth;
   });
-  const prevMonthExpenses = expenses.filter((e) => {
+  const prevMonthExpenses = allExpenses.filter((e) => {
     const d = new Date(e.date);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === prevMonth;
   });
@@ -117,7 +125,7 @@ export default function DashboardScreen({ navigation }: any) {
   const prevMonthTotal = prevMonthExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
   const pctChange = prevMonthTotal > 0 ? ((thisMonthTotal - prevMonthTotal) / prevMonthTotal) * 100 : 0;
 
-  // Category breakdown for mini donut
+  // Category breakdown for donut (ALL vehicles)
   const catMap: Record<string, number> = {};
   for (const e of thisMonthExpenses) {
     const cat = e.category || 'OTHER';
@@ -146,8 +154,12 @@ export default function DashboardScreen({ navigation }: any) {
     return { ...s, dasharray: `${len} ${donutCircumference - len}`, dashoffset: offset };
   });
 
-  // Mileage gauge
-  const avgMileage = fuelSummary?.latestAvgKmpl || 0;
+  // Average mileage across ALL vehicles
+  const validFuelSummaries = allFuelSummaries.filter((f) => f?.latestAvgKmpl && f.latestAvgKmpl > 0);
+  const avgMileage = validFuelSummaries.length > 0
+    ? validFuelSummaries.reduce((sum, f) => sum + f.latestAvgKmpl, 0) / validFuelSummaries.length
+    : 0;
+
   const maxMileage = 40;
   const mileagePct = Math.min((avgMileage / maxMileage) * 100, 100);
   const mileageRadius = 38;
@@ -155,11 +167,14 @@ export default function DashboardScreen({ navigation }: any) {
   const mileageCirc = 2 * Math.PI * mileageRadius;
   const mileageDash = (mileagePct / 100) * mileageCirc;
 
-  const costPerKm = fuelSummary?.totalCost && fuelSummary?.totalLiters && avgMileage > 0
-    ? (fuelSummary.totalCost / (fuelSummary.totalLiters * avgMileage))
+  // Total cost per km across all vehicles
+  const totalCost = allFuelSummaries.reduce((s, f) => s + (f?.totalCost || 0), 0);
+  const totalLiters = allFuelSummaries.reduce((s, f) => s + (f?.totalLiters || 0), 0);
+  const costPerKm = totalCost > 0 && totalLiters > 0 && avgMileage > 0
+    ? (totalCost / (totalLiters * avgMileage))
     : 0;
 
-  const selectedVehicle = vehicles[selectedIdx] || null;
+  const selectedVehicle = vehicles[selectedIdx] || vehicles[0] || null;
 
   // Format current date
   const dateStr = now.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -209,7 +224,7 @@ export default function DashboardScreen({ navigation }: any) {
                     <Ionicons name="bicycle" size={26} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.vehicleName}>{item.make} {item.model}</Text>
+                    <Text style={styles.vehicleName}>{item.make}  {item.model}</Text>
                     <Text style={styles.vehicleSub}>{item.licensePlate} • {item.year}</Text>
                     <View style={styles.odoRow}>
                       <Ionicons name="speedometer-outline" size={12} color={colors.primary} />
@@ -238,7 +253,7 @@ export default function DashboardScreen({ navigation }: any) {
           </TouchableOpacity>
         )}
 
-        {/* ─── EXPENSE OVERVIEW ─── */}
+        {/* ─── EXPENSE OVERVIEW (ALL VEHICLES COMBINED) ─── */}
         <Text style={styles.sectionLabel}>EXPENSE OVERVIEW</Text>
         <View style={styles.neoCard}>
           <View style={styles.expenseHeaderRow}>
@@ -296,7 +311,7 @@ export default function DashboardScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* ─── FUEL INSIGHTS ─── */}
+        {/* ─── FUEL INSIGHTS (ALL VEHICLES) ─── */}
         <Text style={styles.sectionLabel}>FUEL INSIGHTS</Text>
         <View style={styles.neoCard}>
           <View style={styles.fuelRow}>
@@ -321,13 +336,12 @@ export default function DashboardScreen({ navigation }: any) {
               </View>
             </View>
 
-            {/* Cost per KM */}
+            {/* Cost per KM + Live Fuel */}
             <View style={styles.fuelStatCol}>
               <View style={styles.fuelStatBox}>
                 <Text style={styles.fuelStatLabel}>Cost per KM</Text>
                 <Text style={styles.fuelStatValue}>₹{costPerKm > 0 ? costPerKm.toFixed(2) : '—'}</Text>
               </View>
-              {/* Live fuel price */}
               <View style={styles.fuelStatBox}>
                 <View style={styles.liveRow}>
                   <Text style={styles.fuelStatLabel}>Live Fuel Price</Text>
@@ -368,11 +382,13 @@ export default function DashboardScreen({ navigation }: any) {
               return (
                 <View key={r.id} style={styles.reminderChip}>
                   <View style={[styles.reminderIconWrap, { backgroundColor: urgencyColor + '20' }]}>
-                    <Ionicons name={iconName as any} size={16} color={urgencyColor} />
+                    <Ionicons name={iconName as any} size={18} color={urgencyColor} />
                   </View>
                   <Text style={styles.reminderTitle} numberOfLines={1}>{r.title || r.type}</Text>
                   {daysLeft !== null && (
-                    <Text style={[styles.reminderDays, { color: urgencyColor }]}>{daysLeft > 0 ? `${daysLeft} days` : 'Overdue'}</Text>
+                    <Text style={[styles.reminderDays, { color: urgencyColor }]}>
+                      {daysLeft > 0 ? `${daysLeft} days` : 'Overdue'}
+                    </Text>
                   )}
                 </View>
               );
@@ -380,18 +396,49 @@ export default function DashboardScreen({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* ─── QUICK ACTIONS ─── */}
+        {/* ─── QUICK ACTIONS (Matching design mockup exactly) ─── */}
         <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>QUICK ACTIONS</Text>
         <View style={styles.quickActionsRow}>
           {[
-            { icon: 'flame', label: 'Add Fuel', color: '#F97316', onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddFuel', params: { vehicleId: selectedVehicle.id } }) },
-            { icon: 'wallet', label: 'Add Expense', color: '#8B5CF6', onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddExpense', params: { vehicleId: selectedVehicle.id } }) },
-            { icon: 'build', label: 'Add Service', color: '#3B82F6', onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddService', params: { vehicleId: selectedVehicle.id } }) },
-            { icon: 'notifications', label: 'Reminder', color: '#10B981', onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddReminder', params: { vehicleId: selectedVehicle.id } }) },
+            {
+              icon: 'flame' as const,
+              label: 'Add Fuel',
+              bgColor: '#1C2A3A',
+              iconColor: '#F97316',
+              onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddFuel', params: { vehicleId: selectedVehicle.id } }),
+            },
+            {
+              icon: 'wallet' as const,
+              label: 'Add Expense',
+              bgColor: '#1C2A3A',
+              iconColor: '#8B5CF6',
+              onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddExpense', params: { vehicleId: selectedVehicle.id } }),
+            },
+            {
+              icon: 'build' as const,
+              label: 'Add Service',
+              bgColor: '#1C2A3A',
+              iconColor: '#3B82F6',
+              onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddService', params: { vehicleId: selectedVehicle.id } }),
+            },
+            {
+              icon: 'notifications' as const,
+              label: 'Reminder',
+              bgColor: '#1C2A3A',
+              iconColor: '#10B981',
+              onPress: () => selectedVehicle && navigation.navigate('VehiclesTab', { screen: 'AddReminder', params: { vehicleId: selectedVehicle.id } }),
+            },
           ].map((action) => (
-            <TouchableOpacity key={action.label} style={styles.quickActionBtn} onPress={action.onPress} activeOpacity={0.7}>
-              <View style={styles.quickActionCircle}>
-                <Ionicons name={action.icon as any} size={22} color={action.color} />
+            <TouchableOpacity
+              key={action.label}
+              style={styles.quickActionBtn}
+              onPress={action.onPress}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.quickActionCircle, { backgroundColor: action.bgColor }]}>
+                <View style={[styles.quickActionInnerGlow, { backgroundColor: action.iconColor + '20' }]}>
+                  <Ionicons name={action.icon} size={24} color={action.iconColor} />
+                </View>
               </View>
               <Text style={styles.quickActionLabel}>{action.label}</Text>
             </TouchableOpacity>
@@ -468,7 +515,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ─── Vehicle Card (Neumorphic) ───
+  // ─── Vehicle Card ───
   vehicleCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -477,7 +524,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.neumorphBorder,
-    // Neumorphic shadow
     shadowColor: '#000',
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 0.4,
@@ -548,7 +594,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // ─── Neo Card (shared neumorphic card) ───
+  // ─── Neo Card ───
   neoCard: {
     backgroundColor: colors.neumorphSurface,
     borderRadius: borderRadius.xl,
@@ -738,7 +784,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.neumorphBorder,
-    minWidth: 130,
+    minWidth: 150,
     gap: 6,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 2 },
@@ -747,20 +793,20 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   reminderIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 9,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   reminderTitle: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     fontWeight: '700',
     color: colors.neumorphTextPrimary,
-    maxWidth: 100,
+    maxWidth: 120,
   },
   reminderDays: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     fontWeight: '800',
   },
   noRemindersText: {
@@ -768,33 +814,38 @@ const styles = StyleSheet.create({
     color: colors.neumorphTextSecondary,
   },
 
-  // ─── Quick Actions ───
+  // ─── Quick Actions (matching design mockup) ───
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   quickActionBtn: {
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   quickActionCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.neumorphSurface,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.neumorphBorder,
-    // Neumorphic raised effect
     shadowColor: '#000',
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 0.35,
     shadowRadius: 5,
     elevation: 5,
   },
+  quickActionInnerGlow: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   quickActionLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.neumorphTextSecondary,
   },

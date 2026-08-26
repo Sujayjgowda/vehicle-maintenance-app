@@ -40,6 +40,21 @@ export const colors = {
   toll: '#06B6D4',
   parking: '#EC4899',
   other: '#6B7280',
+
+  // ─── Dark Neumorphism (Dashboard) ───
+  neumorphBg: '#1A1A2E',
+  neumorphSurface: '#16213E',
+  neumorphLight: '#1F2B47',
+  neumorphDark: '#0F1525',
+  neumorphBorder: 'rgba(255,255,255,0.06)',
+  neumorphTextPrimary: '#E2E8F0',
+  neumorphTextSecondary: '#94A3B8',
+  neumorphTextMuted: '#64748B',
+
+  // ─── Glassmorphism (Tab Bar) ───
+  glassBg: 'rgba(15, 23, 42, 0.88)',
+  glassBorder: 'rgba(255,255,255,0.08)',
+  glassGlow: '#0D9488',
 };
 
 export const spacing = {

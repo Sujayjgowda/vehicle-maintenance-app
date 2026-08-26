@@ -1,7 +1,9 @@
 import React from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { colors, fontSize } from '../theme/colors';
 
 // Screens
@@ -21,7 +23,6 @@ import PartListScreen from '../screens/parts/PartListScreen';
 import AddPartScreen from '../screens/parts/AddPartScreen';
 import RepairListScreen from '../screens/repairs/RepairListScreen';
 import AddRepairScreen from '../screens/repairs/AddRepairScreen';
-import AiMechanicScreen from '../screens/ai/AiMechanicScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
@@ -46,7 +47,6 @@ function VehiclesStackNavigator() {
       <VehicleStack.Screen name="AddPart" component={AddPartScreen} options={{ headerShown: true, title: 'Add Part', headerTintColor: colors.primary }} />
       <VehicleStack.Screen name="RepairList" component={RepairListScreen} />
       <VehicleStack.Screen name="AddRepair" component={AddRepairScreen} options={{ headerShown: true, title: 'Add Repair', headerTintColor: colors.primary }} />
-      <VehicleStack.Screen name="AiMechanic" component={AiMechanicScreen} />
     </VehicleStack.Navigator>
   );
 }
@@ -60,43 +60,107 @@ function RemindersStackNavigator() {
   );
 }
 
+// Custom glassmorphism tab bar background
+function GlassTabBarBackground() {
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <BlurView
+        intensity={40}
+        tint="dark"
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={tabBarBgStyles.overlay} />
+    </View>
+  );
+}
+
+const tabBarBgStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.glassBg,
+  },
+});
+
+
 export default function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, size }) => {
           let iconName: any;
           if (route.name === 'DashboardTab') {
             iconName = focused ? 'speedometer' : 'speedometer-outline';
           } else if (route.name === 'VehiclesTab') {
-            iconName = focused ? 'car' : 'car-outline';
+            iconName = focused ? 'bicycle' : 'bicycle-outline';
           } else if (route.name === 'RemindersTab') {
             iconName = focused ? 'notifications' : 'notifications-outline';
           } else if (route.name === 'ProfileTab') {
             iconName = focused ? 'person' : 'person-outline';
           }
-          return <Ionicons name={iconName} size={size} color={color} />;
+
+          return (
+            <View style={focused ? glowStyles.glowWrap : glowStyles.noGlow}>
+              {focused && <View style={glowStyles.glowHalo} />}
+              <Ionicons name={iconName} size={size} color={focused ? colors.glassGlow : '#64748B'} />
+            </View>
+          );
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: colors.glassGlow,
+        tabBarInactiveTintColor: '#64748B',
+        tabBarBackground: () => <GlassTabBarBackground />,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.borderLight,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: Platform.OS === 'ios' ? 88 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          paddingTop: 8,
+          borderTopWidth: 1,
+          borderTopColor: colors.glassBorder,
+          backgroundColor: 'transparent',
+          elevation: 0,
         },
         tabBarLabelStyle: {
           fontSize: fontSize.xs,
           fontWeight: '600',
+          marginTop: 2,
         },
       })}
     >
       <Tab.Screen name="DashboardTab" component={DashboardScreen} options={{ tabBarLabel: 'Dashboard' }} />
-      <Tab.Screen name="VehiclesTab" component={VehiclesStackNavigator} options={{ tabBarLabel: 'My Fleet' }} />
+      <Tab.Screen name="VehiclesTab" component={VehiclesStackNavigator} options={{ tabBarLabel: 'Vehicles' }} />
       <Tab.Screen name="RemindersTab" component={RemindersStackNavigator} options={{ tabBarLabel: 'Reminders' }} />
       <Tab.Screen name="ProfileTab" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 }
+
+const glowStyles = StyleSheet.create({
+  glowWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 44,
+    height: 44,
+    position: 'relative',
+  },
+  noGlow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 44,
+    height: 44,
+  },
+  glowHalo: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.glassGlow,
+    opacity: 0.2,
+  },
+});

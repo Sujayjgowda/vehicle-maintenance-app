@@ -7,7 +7,7 @@ import { vehiclesApi } from '../../api/vehicles';
 import { fuelApi } from '../../api/fuel';
 import Card from '../../components/Card';
 import MetricCard from '../../components/MetricCard';
-import VehicleHealthAiCard from '../../components/VehicleHealthAiCard';
+
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
 export default function VehicleDetailScreen({ route, navigation }: any) {
@@ -71,13 +71,7 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
           <Text style={styles.heroSub}>{vehicle.licensePlate} • {vehicle.year}</Text>
         </Card>
 
-        {/* AI Predictive Health Card */}
-        <VehicleHealthAiCard
-          vehicle={vehicle}
-          onOpenAiMechanic={() =>
-            navigation.navigate('AiMechanic', { vehicle })
-          }
-        />
+
 
         <View style={styles.metricsGrid}>
           <MetricCard title="Odometer" value={`${vehicle.currentOdometer?.toLocaleString()} KM`} icon="speedometer" highlight />

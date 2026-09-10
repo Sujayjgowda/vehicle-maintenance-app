@@ -16,6 +16,7 @@ import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
+import ExpenseReportModal from '../../components/ExpenseReportModal';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 import { format } from 'date-fns';
 
@@ -30,6 +31,7 @@ export default function ReminderListScreen({ route, navigation }: any) {
   const vehicleId = route?.params?.vehicleId;
   const [reminders, setReminders] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -105,10 +107,20 @@ export default function ReminderListScreen({ route, navigation }: any) {
           <Text style={styles.title}>🔔 Reminders</Text>
           <Text style={styles.subTitle}>Insurance, PUC, Service & Maintenance Alerts</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={goToAdd}>
-          <Ionicons name="add" size={20} color={colors.textOnPrimary} />
-          <Text style={styles.addBtnText}>Add</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            style={styles.reportBtn}
+            onPress={() => setReportModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="document-text-outline" size={15} color={colors.primary} />
+            <Text style={styles.reportBtnText}>Export PDF</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addBtn} onPress={goToAdd}>
+            <Ionicons name="add" size={18} color={colors.textOnPrimary} />
+            <Text style={styles.addBtnText}>Add</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -123,10 +135,6 @@ export default function ReminderListScreen({ route, navigation }: any) {
               title="No reminders set"
               subtitle="Keep track of Insurance renewals, PUC, and oil change services"
             />
-            <TouchableOpacity style={styles.emptyAddBtn} onPress={goToAdd}>
-              <Ionicons name="add-circle" size={20} color={colors.textOnPrimary} />
-              <Text style={styles.emptyAddBtnText}>Create First Reminder</Text>
-            </TouchableOpacity>
           </View>
         }
         renderItem={({ item }) => {
@@ -135,11 +143,16 @@ export default function ReminderListScreen({ route, navigation }: any) {
           return (
             <Card style={[styles.card, isDone && styles.cardDone]}>
               <View style={styles.cardRow}>
-                <View style={[styles.cardIcon, isDone && styles.cardIconDone]}>
+                <View
+                  style={[
+                    styles.cardIcon,
+                    { backgroundColor: (typeIcons[item.type] ? colors.primary : colors.textSecondary) + '15' },
+                  ]}
+                >
                   <Ionicons
-                    name={typeIcons[item.type] || 'alert'}
+                    name={typeIcons[item.type] || 'alarm'}
                     size={20}
-                    color={isDone ? colors.success : colors.primary}
+                    color={typeIcons[item.type] ? colors.primary : colors.textSecondary}
                   />
                 </View>
 
@@ -166,16 +179,22 @@ export default function ReminderListScreen({ route, navigation }: any) {
                   </TouchableOpacity>
                 ) : null}
                 <TouchableOpacity style={styles.actionEditBtn} onPress={() => handleEdit(item)}>
-                  <Ionicons name="create-outline" size={15} color={colors.primary} />
+                  <Ionicons name="create-outline" size={16} color={colors.primary} />
                   <Text style={styles.actionEditText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item)}>
+                <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item.id)}>
                   <Ionicons name="trash-outline" size={16} color={colors.error} />
                 </TouchableOpacity>
               </View>
             </Card>
           );
         }}
+      />
+
+      <ExpenseReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        defaultVehicleId={vehicleId}
       />
     </SafeAreaView>
   );
@@ -189,6 +208,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+  },
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary + '15',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  reportBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
   },
   backBtn: {
     padding: spacing.xs,

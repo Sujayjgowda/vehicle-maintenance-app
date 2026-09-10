@@ -2,7 +2,7 @@
   "expo": {
     "name": "Garage Grid",
     "slug": "mobile",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     },
     "android": {
       "package": "com.sujayj1012.garagegrid",
-      "versionCode": 5,
+      "versionCode": 6,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0F172A",
@@ -34,7 +34,8 @@
             "usesCleartextTraffic": true
           }
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

@@ -18,6 +18,7 @@ import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import MonthlyExpenseDonutChart, { CATEGORY_CONFIG } from '../../components/MonthlyExpenseDonutChart';
+import ExpenseReportModal from '../../components/ExpenseReportModal';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 import { format } from 'date-fns';
 
@@ -30,6 +31,7 @@ export default function ExpenseListScreen({ route, navigation }: any) {
   const [selectedMonth, setSelectedMonth] = useState('ALL');
   const [selectedFilter, setSelectedFilter] = useState('ALL');
   const [refreshing, setRefreshing] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -127,12 +129,22 @@ export default function ExpenseListScreen({ route, navigation }: any) {
           <Text style={styles.title}>Garage Grid Expenses</Text>
           <Text style={styles.subTitle}>Monthly Breakdown & Auto-Synced Costs</Text>
         </View>
-        <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => navigation.navigate('AddExpense', { vehicleId })}
-        >
-          <Ionicons name="add" size={22} color={colors.textOnPrimary} />
-        </TouchableOpacity>
+        <View style={styles.headerRightActions}>
+          <TouchableOpacity
+            style={styles.reportBtn}
+            onPress={() => setReportModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="document-text-outline" size={16} color={colors.primary} />
+            <Text style={styles.reportBtnText}>Export PDF</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => navigation.navigate('AddExpense', { vehicleId })}
+          >
+            <Ionicons name="add" size={22} color={colors.textOnPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -273,6 +285,12 @@ export default function ExpenseListScreen({ route, navigation }: any) {
           );
         }}
       />
+
+      <ExpenseReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        defaultVehicleId={vehicleId}
+      />
     </SafeAreaView>
   );
 }
@@ -285,6 +303,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+  },
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary + '15',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+  },
+  reportBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
   },
   backBtn: { padding: spacing.xs },
   title: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text },

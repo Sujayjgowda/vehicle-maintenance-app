@@ -8,6 +8,7 @@ import { fuelApi } from '../../api/fuel';
 import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import MetricCard from '../../components/MetricCard';
+import ExpenseReportModal from '../../components/ExpenseReportModal';
 
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
@@ -16,6 +17,7 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
   const [vehicle, setVehicle] = useState<any>(null);
   const [fuelSummary, setFuelSummary] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -63,6 +65,7 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
     { key: 'Repairs & Breakdowns', icon: 'hammer', color: colors.error, screen: 'RepairList' },
     { key: 'Spare Parts Inventory', icon: 'cube', color: colors.info, screen: 'PartList' },
     { key: 'Reminders & Schedules', icon: 'notifications', color: '#10B981', screen: 'ReminderList' },
+    { key: 'Audit & Expense Report (PDF)', icon: 'document-text', color: colors.primary, isReport: true },
   ];
 
   return (
@@ -76,6 +79,13 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => setReportModalVisible(true)}
+              accessibilityLabel="Export PDF Report"
+            >
+              <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.headerBtn}
               onPress={() => navigation.navigate('AddVehicle', { vehicle })}
@@ -109,7 +119,17 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
         <Text style={styles.sectionTitle}>Records & Management</Text>
         <View style={styles.sectionsGrid}>
           {sections.map((s) => (
-            <TouchableOpacity key={s.key} style={styles.sectionBtn} onPress={() => navigation.navigate(s.screen, { vehicleId })}>
+            <TouchableOpacity
+              key={s.key}
+              style={styles.sectionBtn}
+              onPress={() => {
+                if ((s as any).isReport) {
+                  setReportModalVisible(true);
+                } else {
+                  navigation.navigate(s.screen, { vehicleId });
+                }
+              }}
+            >
               <View style={[styles.sectionIcon, { backgroundColor: s.color + '15' }]}>
                 <Ionicons name={s.icon as any} size={22} color={s.color} />
               </View>
@@ -129,6 +149,12 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
           <Text style={styles.bottomDeleteText}>Delete This Vehicle</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <ExpenseReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        defaultVehicleId={vehicleId}
+      />
     </SafeAreaView>
   );
 }

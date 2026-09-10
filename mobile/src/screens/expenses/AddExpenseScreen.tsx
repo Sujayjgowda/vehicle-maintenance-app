@@ -66,25 +66,28 @@ export default function AddExpenseScreen({ route, navigation }: any) {
     setLoading(true);
     try {
       // Check for duplicate expense on the same date with same category and amount
-      const existingRes = await expensesApi.getAll(vehicleId).catch(() => ({ data: [] }));
-      const allExpenses: any[] = existingRes.data || [];
-      const targetDateStr = date.toISOString().slice(0, 10);
+      // (Bypass for 'TOLL' category because toll charges legitimately occur multiple times with identical amounts on the same day)
+      if (category !== 'TOLL') {
+        const existingRes = await expensesApi.getAll(vehicleId).catch(() => ({ data: [] }));
+        const allExpenses: any[] = existingRes.data || [];
+        const targetDateStr = date.toISOString().slice(0, 10);
 
-      const isDuplicate = allExpenses.some((e) => {
-        if (isEditing && e.id === record.id) return false;
-        if (e.category !== category) return false;
-        if (Math.abs(Number(e.amount) - parsedAmount) > 0.01) return false;
-        const eDateStr = new Date(e.date).toISOString().slice(0, 10);
-        return eDateStr === targetDateStr;
-      });
+        const isDuplicate = allExpenses.some((e) => {
+          if (isEditing && e.id === record.id) return false;
+          if (e.category !== category) return false;
+          if (Math.abs(Number(e.amount) - parsedAmount) > 0.01) return false;
+          const eDateStr = new Date(e.date).toISOString().slice(0, 10);
+          return eDateStr === targetDateStr;
+        });
 
-      if (isDuplicate) {
-        Alert.alert(
-          'Duplicate Expense Detected',
-          `An expense of ₹${parsedAmount.toLocaleString()} under "${category}" already exists on ${targetDateStr}.`
-        );
-        setLoading(false);
-        return;
+        if (isDuplicate) {
+          Alert.alert(
+            'Duplicate Expense Detected',
+            `An expense of ₹${parsedAmount.toLocaleString()} under "${category}" already exists on ${targetDateStr}.`
+          );
+          setLoading(false);
+          return;
+        }
       }
 
       const payload = {

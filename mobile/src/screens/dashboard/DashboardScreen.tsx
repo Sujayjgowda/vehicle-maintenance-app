@@ -10,10 +10,13 @@ import {
   Animated,
   Easing,
   Image,
+  StatusBar as RNStatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
 import Svg, { Circle, G, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
 import { vehiclesApi } from '../../api/vehicles';
@@ -184,7 +187,23 @@ export default function DashboardScreen({ navigation }: any) {
     getLiveCityPrice('Bengaluru').then(setLivePrices).catch(() => {});
   }, []);
 
-  useFocusEffect(useCallback(() => { loadVehicles(); }, [loadVehicles]));
+  useFocusEffect(
+    useCallback(() => {
+      loadVehicles();
+      // On Dashboard (dark slate #080C18), notification/status bar text and icons MUST be white
+      RNStatusBar.setBarStyle('light-content');
+      if (Platform.OS === 'android') {
+        RNStatusBar.setBackgroundColor('#080C18');
+      }
+      return () => {
+        // When navigating away to light screens (#F8FAFC), revert status bar icons to dark
+        RNStatusBar.setBarStyle('dark-content');
+        if (Platform.OS === 'android') {
+          RNStatusBar.setBackgroundColor('#F8FAFC');
+        }
+      };
+    }, [loadVehicles])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -294,8 +313,11 @@ export default function DashboardScreen({ navigation }: any) {
     return da - db;
   });
 
+  const isFocused = useIsFocused();
+
   return (
     <SafeAreaView style={styles.safe}>
+      {isFocused && <StatusBar style="light" />}
       <ScrollView
         contentContainerStyle={styles.container}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.neonCyan} />}

@@ -337,6 +337,7 @@ export default function DashboardScreen({ navigation }: any) {
                   : v.model?.toLowerCase().includes('himalayan')
                   ? 'RE Himalayan 450'
                   : `${v.make} ${v.model}`;
+                const isACar = isCar(v);
 
                 return (
                   <TouchableOpacity
@@ -347,22 +348,32 @@ export default function DashboardScreen({ navigation }: any) {
                       styles.vehicleCard,
                       styles.vehicleCardFit,
                       active && styles.vehicleCardActive,
+                      !isACar && styles.bikeVehicleCard,
                     ]}
                   >
                     {/* Glossy specular reflection */}
                     <View style={styles.glassReflection} pointerEvents="none" />
 
-                    {/* Vehicle Photo */}
-                    <View style={styles.vehicleCardImageWrap}>
-                      <Image
-                        source={imgSrc}
-                        style={styles.vehicleCardImage}
-                        resizeMode="contain"
-                      />
-                    </View>
+                    {/* Vehicle Photo (Cars only) */}
+                    {isACar && (
+                      <View style={styles.vehicleCardImageWrap}>
+                        <Image
+                          source={imgSrc}
+                          style={styles.vehicleCardImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )}
 
                     {/* Vehicle Name */}
-                    <Text style={[styles.vehicleCardName, active && styles.vehicleCardNameActive]} numberOfLines={1}>
+                    <Text
+                      style={[
+                        styles.vehicleCardName,
+                        !isACar && styles.bikeName,
+                        active && styles.vehicleCardNameActive,
+                      ]}
+                      numberOfLines={2}
+                    >
                       {displayName}
                     </Text>
 
@@ -373,6 +384,7 @@ export default function DashboardScreen({ navigation }: any) {
                         {
                           backgroundColor: isDiesel ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0, 242, 254, 0.12)',
                           borderColor: badgeColor,
+                          marginTop: !isACar ? 6 : 8,
                         },
                       ]}
                     >
@@ -411,6 +423,7 @@ export default function DashboardScreen({ navigation }: any) {
                   : v.model?.toLowerCase().includes('himalayan')
                   ? 'RE Himalayan 450'
                   : `${v.make} ${v.model}`;
+                const isACar = isCar(v);
 
                 return (
                   <TouchableOpacity
@@ -421,17 +434,27 @@ export default function DashboardScreen({ navigation }: any) {
                       styles.vehicleCard,
                       styles.vehicleCardScroll,
                       active && styles.vehicleCardActive,
+                      !isACar && styles.bikeVehicleCard,
                     ]}
                   >
                     <View style={styles.glassReflection} pointerEvents="none" />
-                    <View style={styles.vehicleCardImageWrap}>
-                      <Image
-                        source={imgSrc}
-                        style={styles.vehicleCardImage}
-                        resizeMode="contain"
-                      />
-                    </View>
-                    <Text style={[styles.vehicleCardName, active && styles.vehicleCardNameActive]} numberOfLines={1}>
+                    {isACar && (
+                      <View style={styles.vehicleCardImageWrap}>
+                        <Image
+                          source={imgSrc}
+                          style={styles.vehicleCardImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )}
+                    <Text
+                      style={[
+                        styles.vehicleCardName,
+                        !isACar && styles.bikeName,
+                        active && styles.vehicleCardNameActive,
+                      ]}
+                      numberOfLines={2}
+                    >
                       {displayName}
                     </Text>
                     <View
@@ -440,6 +463,7 @@ export default function DashboardScreen({ navigation }: any) {
                         {
                           backgroundColor: isDiesel ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0, 242, 254, 0.12)',
                           borderColor: badgeColor,
+                          marginTop: !isACar ? 6 : 8,
                         },
                       ]}
                     >
@@ -884,6 +908,18 @@ const styles = StyleSheet.create({
   },
   vehicleCardScroll: {
     width: 175,
+  },
+  bikeVehicleCard: {
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 8,
+  },
+  bikeName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#F1F5F9',
+    marginTop: 0,
+    lineHeight: 20,
   },
   vehicleCardActive: {
     borderColor: '#00F2FE',

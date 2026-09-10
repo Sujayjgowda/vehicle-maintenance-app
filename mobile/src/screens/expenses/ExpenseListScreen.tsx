@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { expensesApi } from '../../api/resources';
+import { fuelApi } from '../../api/fuel';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import MonthlyExpenseDonutChart, { CATEGORY_CONFIG } from '../../components/MonthlyExpenseDonutChart';
@@ -30,11 +31,35 @@ export default function ExpenseListScreen({ route, navigation }: any) {
 
   const load = useCallback(async () => {
     try {
-      const [eRes, sRes] = await Promise.all([
+      const [eRes, sRes, fRes] = await Promise.all([
         expensesApi.getAll(vehicleId),
         expensesApi.getSummary(vehicleId),
+        fuelApi.getAll(vehicleId),
       ]);
-      setExpenses(eRes.data);
+
+      const rawExpenses = eRes.data || [];
+      const rawFuel = fRes.data || [];
+
+      // Map fuel fill-up logs into expense objects for unified monthly tracking
+      const fuelExpenses = rawFuel.map((f: any) => ({
+        id: `fuel-${f.id}`,
+        vehicleId,
+        date: f.date,
+        amount: Number(f.cost) || 0,
+        category: 'FUEL',
+        sourceType: 'FUEL_LOG',
+        notes: `Fuel Fill-up: ${f.liters} L${f.pricePerLiter ? ` @ ₹${f.pricePerLiter}/L` : ''}${f.gasStation ? ` • ${f.gasStation}` : ''}${f.notes ? ` (${f.notes})` : ''}`,
+        receiptUrl: undefined,
+        isFuelRecord: true,
+        rawFuel: f,
+      }));
+
+      // Combine and sort by date descending
+      const combined = [...rawExpenses, ...fuelExpenses].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      setExpenses(combined);
       setSummary(sRes.data);
     } catch (e) {
       console.log(e);
@@ -61,26 +86,39 @@ export default function ExpenseListScreen({ route, navigation }: any) {
     });
   }, [expenses, selectedMonth, selectedFilter]);
 
-  const handleEdit = (record: any) => {
-    navigation.navigate('AddExpense', { vehicleId, record });
+  const handleEdit = (item: any) => {
+    if (item.isFuelRecord) {
+      navigation.navigate('AddFuel', { vehicleId, record: item.rawFuel });
+    } else {
+      navigation.navigate('AddExpense', { vehicleId, record: item });
+    }
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert('Delete Expense', 'Are you sure you want to delete this expense record?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await expensesApi.delete(vehicleId, id);
-            load();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to delete expense');
-          }
+  const handleDelete = (item: any) => {
+    const isFuel = item.isFuelRecord;
+    Alert.alert(
+      isFuel ? 'Delete Fuel Record' : 'Delete Expense',
+      `Are you sure you want to delete this ${isFuel ? 'fuel fill-up log' : 'expense record'}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              if (isFuel) {
+                await fuelApi.delete(vehicleId, item.rawFuel.id);
+              } else {
+                await expensesApi.delete(vehicleId, item.id);
+              }
+              load();
+            } catch (e) {
+              Alert.alert('Error', `Failed to delete ${isFuel ? 'fuel record' : 'expense'}`);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
@@ -209,11 +247,15 @@ export default function ExpenseListScreen({ route, navigation }: any) {
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={styles.cardTitle}>{cat.label}</Text>
-                      {isAutoSynced && (
+                      {item.isFuelRecord ? (
+                        <View style={[styles.autoSyncBadge, { backgroundColor: '#F9731620' }]}>
+                          <Text style={[styles.autoSyncText, { color: '#F97316' }]}>Fuel Fill-Up</Text>
+                        </View>
+                      ) : isAutoSynced ? (
                         <View style={styles.autoSyncBadge}>
                           <Text style={styles.autoSyncText}>Auto-synced</Text>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                     <Text style={styles.cardSub}>{new Date(item.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
                     {item.notes ? <Text style={styles.cardNotes}>{item.notes}</Text> : null}
@@ -227,7 +269,7 @@ export default function ExpenseListScreen({ route, navigation }: any) {
                     <Ionicons name="create-outline" size={14} color={colors.primary} />
                     <Text style={styles.actionEditText}>Edit</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item.id)}>
+                  <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item)}>
                     <Ionicons name="trash-outline" size={15} color={colors.error} />
                   </TouchableOpacity>
                 </View>

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,8 +23,33 @@ export default function VehicleListScreen({ navigation }: any) {
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
+  const handleDelete = (v: any) => {
+    Alert.alert(
+      'Delete Vehicle',
+      `Are you sure you want to delete ${v.make} ${v.model}? All associated records (fuel, expenses, services) will be permanently deleted.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await vehiclesApi.delete(v.id);
+              load();
+            } catch (e: any) {
+              Alert.alert('Error', e.response?.data?.message || 'Failed to delete vehicle');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderVehicle = ({ item }: any) => (
-    <TouchableOpacity onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate('VehicleDetail', { vehicleId: item.id })}
+    >
       <Card style={styles.card}>
         <View style={styles.row}>
           <View style={styles.iconWrap}>
@@ -36,6 +61,7 @@ export default function VehicleListScreen({ navigation }: any) {
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </View>
+
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statVal}>{item.currentOdometer?.toLocaleString()}</Text>
@@ -53,6 +79,31 @@ export default function VehicleListScreen({ navigation }: any) {
             <Text style={styles.statVal}>{item._count?.reminders || 0}</Text>
             <Text style={styles.statLabel}>Reminders</Text>
           </View>
+        </View>
+
+        {/* ─── Edit & Delete Card Actions ─── */}
+        <View style={styles.cardActionsRow}>
+          <TouchableOpacity
+            style={styles.cardActionBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              navigation.navigate('AddVehicle', { vehicle: item });
+            }}
+          >
+            <Ionicons name="create-outline" size={16} color={colors.primary} />
+            <Text style={styles.cardActionText}>Edit Vehicle</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.cardActionBtn, styles.cardActionDeleteBtn]}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleDelete(item);
+            }}
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.error || '#EF4444'} />
+            <Text style={[styles.cardActionText, { color: colors.error || '#EF4444' }]}>Delete</Text>
+          </TouchableOpacity>
         </View>
       </Card>
     </TouchableOpacity>
@@ -93,4 +144,31 @@ const styles = StyleSheet.create({
   stat: { flex: 1, alignItems: 'center' },
   statVal: { fontSize: fontSize.base, fontWeight: '700', color: colors.text },
   statLabel: { fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 },
+  cardActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  cardActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.primary + '10',
+  },
+  cardActionDeleteBtn: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  cardActionText: {
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    color: colors.primary,
+  },
 });

@@ -4,9 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { servicesApi } from '../../api/resources';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
+import { format } from 'date-fns';
 
 export default function ServiceListScreen({ route, navigation }: any) {
   const { vehicleId } = route.params;
@@ -30,21 +32,18 @@ export default function ServiceListScreen({ route, navigation }: any) {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Service Record', 'Are you sure you want to delete this service record?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await servicesApi.delete(vehicleId, id);
-            load();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to delete service record');
-          }
-        },
-      },
-    ]);
+    confirmAction(
+      'Delete Service Record',
+      'Are you sure you want to delete this service record?',
+      async () => {
+        try {
+          await servicesApi.delete(vehicleId, id);
+          load();
+        } catch (e) {
+          Alert.alert('Error', 'Failed to delete service record');
+        }
+      }
+    );
   };
 
   return (
@@ -87,7 +86,7 @@ export default function ServiceListScreen({ route, navigation }: any) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{item.serviceType}</Text>
                   <Text style={styles.cardSub}>
-                    {new Date(item.date).toLocaleDateString()} • {item.odometer.toLocaleString()} KM
+                    {format(new Date(item.date), 'dd-MMM-yyyy')} • {item.odometer.toLocaleString()} KM
                   </Text>
                   {item.serviceCenter ? (
                     <Text style={styles.cardSub}>📍 {item.serviceCenter}</Text>

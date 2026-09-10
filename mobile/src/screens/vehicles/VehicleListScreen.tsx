@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { vehiclesApi } from '../../api/vehicles';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
@@ -24,24 +25,17 @@ export default function VehicleListScreen({ navigation }: any) {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleDelete = (v: any) => {
-    Alert.alert(
+    confirmAction(
       'Delete Vehicle',
       `Are you sure you want to delete ${v.make} ${v.model}? All associated records (fuel, expenses, services) will be permanently deleted.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await vehiclesApi.delete(v.id);
-              load();
-            } catch (e: any) {
-              Alert.alert('Error', e.response?.data?.message || 'Failed to delete vehicle');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await vehiclesApi.delete(v.id);
+          load();
+        } catch (e: any) {
+          Alert.alert('Error', e.response?.data?.message || 'Failed to delete vehicle');
+        }
+      }
     );
   };
 

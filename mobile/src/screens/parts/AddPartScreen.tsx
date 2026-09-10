@@ -46,31 +46,44 @@ export default function AddPartScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      if (isEditing) {
-        await partsApi.update(vehicleId, record.id, {
-          componentName: name,
-          installDate: installDate.toISOString(),
-          installOdometer: parsedOdometer,
-          replacementIntervalKm: intervalKm ? parseInt(intervalKm) : undefined,
-          replacementIntervalMonths: intervalMonths ? parseInt(intervalMonths) : undefined,
-          cost: cost ? parseFloat(cost) : undefined,
-          notes: notes || undefined,
-        });
-        Alert.alert('Success', 'Part record updated successfully! ⚙️', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
-      } else {
-        await partsApi.create(vehicleId, {
-          componentName: name,
-          installDate: installDate.toISOString(),
-          installOdometer: parsedOdometer,
-          replacementIntervalKm: intervalKm ? parseInt(intervalKm) : undefined,
-          replacementIntervalMonths: intervalMonths ? parseInt(intervalMonths) : undefined,
-          cost: cost ? parseFloat(cost) : undefined,
-          notes: notes || undefined,
-        });
-        navigation.goBack();
+      // Check for duplicate part record on the same date with same component name
+      const existingRes = await partsApi.getAll(vehicleId).catch(() => ({ data: [] }));
+      const allParts: any[] = existingRes.data || [];
+      const targetDateStr = installDate.toISOString().slice(0, 10);
+
+      const isDuplicate = allParts.some((p) => {
+        if (isEditing && p.id === record.id) return false;
+        const pDateStr = new Date(p.installDate).toISOString().slice(0, 10);
+        if (pDateStr !== targetDateStr) return false;
+        return p.componentName?.toLowerCase().trim() === name.toLowerCase().trim();
+      });
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Part Record Detected',
+          `A record for part "${name}" already exists on this date (${targetDateStr}).`
+        );
+        setLoading(false);
+        return;
       }
+
+      const payload = {
+        componentName: name,
+        installDate: installDate.toISOString(),
+        installOdometer: parsedOdometer,
+        replacementIntervalKm: intervalKm ? parseInt(intervalKm, 10) : undefined,
+        replacementIntervalMonths: intervalMonths ? parseInt(intervalMonths, 10) : undefined,
+        cost: cost ? parseFloat(cost) : undefined,
+        notes: notes || undefined,
+      };
+
+      if (isEditing) {
+        await partsApi.update(vehicleId, record.id, payload);
+      } else {
+        await partsApi.create(vehicleId, payload);
+      }
+
+      navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save part record');
     } finally {

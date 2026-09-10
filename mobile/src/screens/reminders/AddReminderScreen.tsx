@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { addMonths, addYears, format } from 'date-fns';
 import { remindersApi } from '../../api/resources';
 import { vehiclesApi } from '../../api/vehicles';
+import { confirmAction } from '../../utils/confirmAlert';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { colors, spacing, borderRadius, fontSize } from '../../theme/colors';
@@ -27,19 +28,34 @@ const REMINDER_TYPES = [
 ];
 
 export default function AddReminderScreen({ route, navigation }: any) {
-  const initialVehicleId = route?.params?.vehicleId;
+  const existingRecord = route?.params?.record;
+  const isEditing = Boolean(existingRecord);
+  const initialVehicleId = route?.params?.vehicleId || existingRecord?.vehicleId;
 
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(initialVehicleId || '');
   const [loadingVehicles, setLoadingVehicles] = useState(!initialVehicleId);
 
-  const [type, setType] = useState('INSURANCE');
-  const [title, setTitle] = useState('Insurance Renewal');
-  const [dueKm, setDueKm] = useState('');
-  const [dueDate, setDueDate] = useState<Date>(addYears(new Date(), 1));
-  const [hasDueDate, setHasDueDate] = useState(true);
-  const [hasDueKm, setHasDueKm] = useState(false);
+  const [type, setType] = useState(existingRecord?.type || 'INSURANCE');
+  const [title, setTitle] = useState(existingRecord?.title || 'Insurance Renewal');
+  const [dueKm, setDueKm] = useState(existingRecord?.dueKm ? String(existingRecord.dueKm) : '');
+  const [dueDate, setDueDate] = useState<Date>(
+    existingRecord?.dueDate ? new Date(existingRecord.dueDate) : addYears(new Date(), 1)
+  );
+  const [hasDueDate, setHasDueDate] = useState(
+    existingRecord ? Boolean(existingRecord.dueDate) : true
+  );
+  const [hasDueKm, setHasDueKm] = useState(
+    existingRecord ? Boolean(existingRecord.dueKm) : false
+  );
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    if (isEditing) {
+      navigation.setOptions({ title: 'Edit Reminder' });
+    }
+  }, [isEditing, navigation]);
 
   // Load vehicles if not provided
   useEffect(() => {
@@ -61,7 +77,9 @@ export default function AddReminderScreen({ route, navigation }: any) {
 
   const handleSelectType = (item: typeof REMINDER_TYPES[0]) => {
     setType(item.id);
-    setTitle(item.defaultTitle);
+    if (!isEditing || !title) {
+      setTitle(item.defaultTitle);
+    }
     if (item.id === 'PUC') {
       setDueDate(addMonths(new Date(), 6));
       setHasDueDate(true);
@@ -90,28 +108,88 @@ export default function AddReminderScreen({ route, navigation }: any) {
       return;
     }
 
-    if (hasDueKm && (!dueKm || parseInt(dueKm) <= 0)) {
+    if (hasDueKm && (!dueKm || parseInt(dueKm, 10) <= 0)) {
       Alert.alert('Error', 'Please enter a valid Due KM reading.');
       return;
     }
 
     setLoading(true);
     try {
-      await remindersApi.create(selectedVehicleId, {
+      // 1. Check duplicate reminders for this vehicle on the same date / type
+      const existingRes = await remindersApi.getAll(selectedVehicleId).catch(() => ({ data: [] }));
+      const allReminders: any[] = existingRes.data || [];
+
+      const targetDateStr = hasDueDate ? dueDate.toISOString().slice(0, 10) : null;
+      const targetKm = hasDueKm && dueKm ? parseInt(dueKm, 10) : null;
+
+      const isDuplicate = allReminders.some((r) => {
+        if (isEditing && r.id === existingRecord.id) return false;
+        if (r.status === 'COMPLETED' || r.status === 'CANCELLED') return false;
+        if (r.type !== type) return false;
+
+        if (targetDateStr && r.dueDate) {
+          const rDateStr = new Date(r.dueDate).toISOString().slice(0, 10);
+          if (rDateStr === targetDateStr) return true;
+        }
+
+        if (targetKm && r.dueKm && r.dueKm === targetKm) {
+          return true;
+        }
+
+        return false;
+      });
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Reminder Detected',
+          `An active ${type.replace('_', ' ')} reminder is already scheduled for this ${targetDateStr ? `date (${targetDateStr})` : `mileage (${targetKm} KM)`}.`
+        );
+        setLoading(false);
+        return;
+      }
+
+      const payload: any = {
         type,
         title: title.trim() || undefined,
-        dueDate: hasDueDate ? dueDate.toISOString() : undefined,
-        dueKm: hasDueKm && dueKm ? parseInt(dueKm) : undefined,
-        status: 'PENDING',
-      });
-      Alert.alert('Success', 'Reminder saved successfully! 🎉', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+        dueDate: hasDueDate ? dueDate.toISOString() : null,
+        dueKm: hasDueKm && dueKm ? parseInt(dueKm, 10) : null,
+      };
+
+      if (isEditing) {
+        await remindersApi.update(selectedVehicleId, existingRecord.id, payload);
+      } else {
+        await remindersApi.create(selectedVehicleId, {
+          ...payload,
+          status: 'PENDING',
+        });
+      }
+
+      // Return back immediately with updated data
+      navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || 'Failed to save reminder');
+      Alert.alert('Error', e.response?.data?.message || (isEditing ? 'Failed to update reminder' : 'Failed to save reminder'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = () => {
+    if (!existingRecord) return;
+    confirmAction(
+      'Delete Reminder',
+      'Are you sure you want to remove this reminder?',
+      async () => {
+        setDeleting(true);
+        try {
+          await remindersApi.delete(selectedVehicleId, existingRecord.id);
+          navigation.goBack();
+        } catch (e: any) {
+          Alert.alert('Error', e.response?.data?.message || 'Failed to delete reminder');
+        } finally {
+          setDeleting(false);
+        }
+      }
+    );
   };
 
   if (loadingVehicles) {
@@ -251,11 +329,23 @@ export default function AddReminderScreen({ route, navigation }: any) {
 
           {/* 6. Submit Button */}
           <Button
-            title="Save Reminder"
+            title={isEditing ? 'Update Reminder' : 'Save Reminder'}
             onPress={handleSubmit}
             loading={loading}
             style={{ marginTop: spacing.lg }}
           />
+
+          {isEditing && (
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={handleDelete}
+              disabled={deleting}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="trash-outline" size={18} color={colors.error || '#EF4444'} />
+              <Text style={styles.deleteText}>{deleting ? 'Deleting...' : 'Delete Reminder'}</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -342,4 +432,21 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   presetChipText: { fontSize: fontSize.xs, fontWeight: '600', color: colors.textSecondary },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: spacing.lg,
+    paddingVertical: 14,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  deleteText: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.error || '#EF4444',
+  },
 });

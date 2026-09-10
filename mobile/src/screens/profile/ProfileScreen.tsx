@@ -6,6 +6,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { vehiclesApi } from '../../api/vehicles';
 import { expensesApi } from '../../api/resources';
+import { fuelApi } from '../../api/fuel';
 import Card from '../../components/Card';
 import Button from '../../components/Button';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
@@ -13,16 +14,47 @@ import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [vehicleCount, setVehicleCount] = useState(0);
-  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [annualSpent, setAnnualSpent] = useState(0);
+  const [currentYear] = useState(new Date().getFullYear());
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const vRes = await vehiclesApi.getAll();
-      setVehicleCount(vRes.data.length);
-      const eRes = await expensesApi.getUserSummary();
-      setTotalExpenses(eRes.data.total || 0);
-    } catch (e) { console.log(e); }
+      const vehicles = vRes.data || [];
+      setVehicleCount(vehicles.length);
+
+      const thisYear = new Date().getFullYear();
+
+      // Fetch expenses and fuel records for all vehicles to consolidate annual spending
+      const vehicleSpendingPromises = vehicles.map(async (v: any) => {
+        const [eRes, fRes] = await Promise.all([
+          expensesApi.getAll(v.id).catch(() => ({ data: [] })),
+          fuelApi.getAll(v.id).catch(() => ({ data: [] })),
+        ]);
+
+        const yearExpenses = (eRes.data || []).filter((e: any) => {
+          if (!e.date) return false;
+          return new Date(e.date).getFullYear() === thisYear;
+        });
+
+        const yearFuel = (fRes.data || []).filter((f: any) => {
+          if (!f.date) return false;
+          return new Date(f.date).getFullYear() === thisYear;
+        });
+
+        const expenseSum = yearExpenses.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
+        const fuelSum = yearFuel.reduce((sum: number, f: any) => sum + (Number(f.cost) || 0), 0);
+
+        return expenseSum + fuelSum;
+      });
+
+      const totals = await Promise.all(vehicleSpendingPromises);
+      const grandTotal = totals.reduce((a: number, b: number) => a + b, 0);
+      setAnnualSpent(grandTotal);
+    } catch (e) {
+      console.log('Error calculating annual profile spent:', e);
+    }
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -50,8 +82,9 @@ export default function ProfileScreen() {
           </Card>
           <Card style={styles.statCard}>
             <Ionicons name="wallet" size={24} color={colors.accent} />
-            <Text style={styles.statVal}>₹{Math.round(totalExpenses).toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Total Spent</Text>
+            <Text style={styles.statVal}>₹{Math.round(annualSpent).toLocaleString()}</Text>
+            <Text style={styles.statLabel}>Spent in {currentYear}</Text>
+            <Text style={styles.statSubLabel}>All Vehicles • Resets Yearly</Text>
           </Card>
         </View>
 
@@ -76,7 +109,7 @@ export default function ProfileScreen() {
         </Card>
 
         <View style={{ alignItems: 'center', marginTop: spacing.lg, marginBottom: spacing.xs }}>
-          <Text style={{ fontSize: fontSize.sm, fontWeight: '700', color: colors.textSecondary }}>Garage Grid v1.0.0</Text>
+          <Text style={{ fontSize: fontSize.sm, fontWeight: '700', color: colors.textSecondary }}>Garage Grid v1.0.3</Text>
           <Text style={{ fontSize: fontSize.xs, color: colors.textMuted, marginTop: 2 }}>Real-time Fleet & Maintenance Ecosystem</Text>
         </View>
 
@@ -99,7 +132,8 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
   statCard: { flex: 1, alignItems: 'center', paddingVertical: spacing.lg },
   statVal: { fontSize: fontSize.xl, fontWeight: '800', color: colors.text, marginTop: spacing.sm },
-  statLabel: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
+  statLabel: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2, fontWeight: '600' },
+  statSubLabel: { fontSize: 10, color: colors.textMuted, marginTop: 2 },
   infoCard: { gap: 0 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
   infoLabel: { fontSize: fontSize.sm, color: colors.textSecondary, width: 80 },

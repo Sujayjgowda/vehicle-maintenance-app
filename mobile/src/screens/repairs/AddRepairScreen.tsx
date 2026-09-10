@@ -53,31 +53,44 @@ export default function AddRepairScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      if (isEditing) {
-        await repairsApi.update(vehicleId, record.id, {
-          date: date.toISOString(),
-          description,
-          odometer: parsedOdometer,
-          cost: parsedCost,
-          cause: cause || undefined,
-          location: location || undefined,
-          notes: notes || undefined,
-        });
-        Alert.alert('Success', 'Repair log updated successfully! 🛠️', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
-      } else {
-        await repairsApi.create(vehicleId, {
-          date: date.toISOString(),
-          description,
-          odometer: parsedOdometer,
-          cost: parsedCost,
-          cause: cause || undefined,
-          location: location || undefined,
-          notes: notes || undefined,
-        });
-        navigation.goBack();
+      // Check for duplicate repair log on the same date with same description
+      const existingRes = await repairsApi.getAll(vehicleId).catch(() => ({ data: [] }));
+      const allRepairs: any[] = existingRes.data || [];
+      const targetDateStr = date.toISOString().slice(0, 10);
+
+      const isDuplicate = allRepairs.some((r) => {
+        if (isEditing && r.id === record.id) return false;
+        const rDateStr = new Date(r.date).toISOString().slice(0, 10);
+        if (rDateStr !== targetDateStr) return false;
+        return r.description?.toLowerCase().trim() === description.toLowerCase().trim();
+      });
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Repair Log Detected',
+          `A repair entry for "${description}" already exists on this date (${targetDateStr}).`
+        );
+        setLoading(false);
+        return;
       }
+
+      const payload = {
+        date: date.toISOString(),
+        description,
+        odometer: parsedOdometer,
+        cost: parsedCost,
+        cause: cause || undefined,
+        location: location || undefined,
+        notes: notes || undefined,
+      };
+
+      if (isEditing) {
+        await repairsApi.update(vehicleId, record.id, payload);
+      } else {
+        await repairsApi.create(vehicleId, payload);
+      }
+
+      navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save repair log');
     } finally {

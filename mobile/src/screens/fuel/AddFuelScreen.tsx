@@ -209,25 +209,44 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      if (isEditing) {
-        await fuelApi.update(vehicleId, record.id, {
-          date: date.toISOString(),
-          liters: parsedLiters,
-          cost: parsedCost,
-          odometerReading: parsedOdometer,
-        });
-        Alert.alert('Success', 'Fuel record updated & synced to Expenses! ⛽', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
-      } else {
-        await fuelApi.create(vehicleId, {
-          date: date.toISOString(),
-          liters: parsedLiters,
-          cost: parsedCost,
-          odometerReading: parsedOdometer,
-        });
-        navigation.goBack();
+      // Check for duplicate fuel log on the same date with same odometer or cost
+      const existingRes = await fuelApi.getAll(vehicleId).catch(() => ({ data: [] }));
+      const allFuel: any[] = existingRes.data || [];
+      const targetDateStr = date.toISOString().slice(0, 10);
+
+      const isDuplicate = allFuel.some((f) => {
+        if (isEditing && f.id === record.id) return false;
+        const fDateStr = new Date(f.date).toISOString().slice(0, 10);
+        if (fDateStr !== targetDateStr) return false;
+
+        const odoMatch = f.odometer && Math.abs(Number(f.odometer) - parsedOdometer) === 0;
+        const costMatch = f.cost && Math.abs(Number(f.cost) - parsedCost) < 0.5 && Math.abs(Number(f.liters) - parsedLiters) < 0.1;
+        return odoMatch || costMatch;
+      });
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Fuel Record Detected',
+          `A fuel fill-up record for this date (${targetDateStr}) with odometer ${parsedOdometer} KM already exists.`
+        );
+        setLoading(false);
+        return;
       }
+
+      const payload = {
+        date: date.toISOString(),
+        liters: parsedLiters,
+        cost: parsedCost,
+        odometerReading: parsedOdometer,
+      };
+
+      if (isEditing) {
+        await fuelApi.update(vehicleId, record.id, payload);
+      } else {
+        await fuelApi.create(vehicleId, payload);
+      }
+
+      navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save fuel record');
     } finally {

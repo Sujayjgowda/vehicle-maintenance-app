@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { vehiclesApi } from '../../api/vehicles';
 import { fuelApi } from '../../api/fuel';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import MetricCard from '../../components/MetricCard';
 
@@ -20,7 +21,7 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
     try {
       const [vRes, fRes] = await Promise.all([
         vehiclesApi.getById(vehicleId),
-        fuelApi.getSummary(vehicleId),
+        fuelApi.getSummary(vehicleId).catch(() => ({ data: null })),
       ]);
       setVehicle(vRes.data);
       setFuelSummary(fRes.data);
@@ -39,24 +40,17 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
 
   const handleDelete = () => {
     if (!vehicle) return;
-    Alert.alert(
+    confirmAction(
       'Delete Vehicle',
       `Are you sure you want to delete ${vehicle.make} ${vehicle.model}? All associated records (fuel, expenses, services) will be permanently deleted.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await vehiclesApi.delete(vehicleId);
-              navigation.navigate('VehicleList');
-            } catch (e: any) {
-              Alert.alert('Error', e.response?.data?.message || 'Failed to delete vehicle');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await vehiclesApi.delete(vehicleId);
+          navigation.navigate('VehicleList');
+        } catch (e: any) {
+          Alert.alert('Error', e.response?.data?.message || 'Failed to delete vehicle');
+        }
+      }
     );
   };
 

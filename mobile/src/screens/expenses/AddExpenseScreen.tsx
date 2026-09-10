@@ -65,25 +65,42 @@ export default function AddExpenseScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      if (isEditing) {
-        await expensesApi.update(vehicleId, record.id, {
-          category,
-          amount: parsedAmount,
-          date: date.toISOString(),
-          notes: notes || undefined,
-        });
-        Alert.alert('Success', 'Expense updated successfully! 💰', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
-      } else {
-        await expensesApi.create(vehicleId, {
-          category,
-          amount: parsedAmount,
-          date: date.toISOString(),
-          notes: notes || undefined,
-        });
-        navigation.goBack();
+      // Check for duplicate expense on the same date with same category and amount
+      const existingRes = await expensesApi.getAll(vehicleId).catch(() => ({ data: [] }));
+      const allExpenses: any[] = existingRes.data || [];
+      const targetDateStr = date.toISOString().slice(0, 10);
+
+      const isDuplicate = allExpenses.some((e) => {
+        if (isEditing && e.id === record.id) return false;
+        if (e.category !== category) return false;
+        if (Math.abs(Number(e.amount) - parsedAmount) > 0.01) return false;
+        const eDateStr = new Date(e.date).toISOString().slice(0, 10);
+        return eDateStr === targetDateStr;
+      });
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Expense Detected',
+          `An expense of ₹${parsedAmount.toLocaleString()} under "${category}" already exists on ${targetDateStr}.`
+        );
+        setLoading(false);
+        return;
       }
+
+      const payload = {
+        category,
+        amount: parsedAmount,
+        date: date.toISOString(),
+        notes: notes || undefined,
+      };
+
+      if (isEditing) {
+        await expensesApi.update(vehicleId, record.id, payload);
+      } else {
+        await expensesApi.create(vehicleId, payload);
+      }
+
+      navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save expense');
     } finally {

@@ -14,10 +14,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { expensesApi } from '../../api/resources';
 import { fuelApi } from '../../api/fuel';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import MonthlyExpenseDonutChart, { CATEGORY_CONFIG } from '../../components/MonthlyExpenseDonutChart';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
+import { format } from 'date-fns';
 
 const filterTabs = ['ALL', 'FUEL', 'SERVICE', 'REPAIR', 'TOLL', 'PARKING', 'INSURANCE', 'PARTS', 'OTHER'];
 
@@ -96,28 +98,21 @@ export default function ExpenseListScreen({ route, navigation }: any) {
 
   const handleDelete = (item: any) => {
     const isFuel = item.isFuelRecord;
-    Alert.alert(
+    confirmAction(
       isFuel ? 'Delete Fuel Record' : 'Delete Expense',
       `Are you sure you want to delete this ${isFuel ? 'fuel fill-up log' : 'expense record'}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (isFuel) {
-                await fuelApi.delete(vehicleId, item.rawFuel.id);
-              } else {
-                await expensesApi.delete(vehicleId, item.id);
-              }
-              load();
-            } catch (e) {
-              Alert.alert('Error', `Failed to delete ${isFuel ? 'fuel record' : 'expense'}`);
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          if (isFuel) {
+            await fuelApi.delete(vehicleId, item.rawFuel.id);
+          } else {
+            await expensesApi.delete(vehicleId, item.id);
+          }
+          load();
+        } catch (e) {
+          Alert.alert('Error', `Failed to delete ${isFuel ? 'fuel record' : 'expense'}`);
+        }
+      }
     );
   };
 
@@ -257,7 +252,7 @@ export default function ExpenseListScreen({ route, navigation }: any) {
                         </View>
                       ) : null}
                     </View>
-                    <Text style={styles.cardSub}>{new Date(item.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                    <Text style={styles.cardSub}>{format(new Date(item.date), 'dd-MMM-yyyy')}</Text>
                     {item.notes ? <Text style={styles.cardNotes}>{item.notes}</Text> : null}
                   </View>
                   <Text style={styles.cardCost}>₹{Number(item.amount).toLocaleString()}</Text>

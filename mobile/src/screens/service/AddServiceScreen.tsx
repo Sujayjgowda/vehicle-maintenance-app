@@ -52,29 +52,43 @@ export default function AddServiceScreen({ route, navigation }: any) {
 
     setLoading(true);
     try {
-      if (isEditing) {
-        await servicesApi.update(vehicleId, record.id, {
-          date: date.toISOString(),
-          serviceType,
-          serviceCenter: serviceCenter || undefined,
-          odometer: parsedOdometer,
-          cost: parsedCost,
-          notes: notes || undefined,
-        });
-        Alert.alert('Success', 'Service record updated successfully! 🔧', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
-      } else {
-        await servicesApi.create(vehicleId, {
-          date: date.toISOString(),
-          serviceType,
-          serviceCenter: serviceCenter || undefined,
-          odometer: parsedOdometer,
-          cost: parsedCost,
-          notes: notes || undefined,
-        });
-        navigation.goBack();
+      // Check for duplicate service record on the same date with same serviceType
+      const existingRes = await servicesApi.getAll(vehicleId).catch(() => ({ data: [] }));
+      const allServices: any[] = existingRes.data || [];
+      const targetDateStr = date.toISOString().slice(0, 10);
+
+      const isDuplicate = allServices.some((s) => {
+        if (isEditing && s.id === record.id) return false;
+        if (s.serviceType !== serviceType) return false;
+        const sDateStr = new Date(s.date).toISOString().slice(0, 10);
+        return sDateStr === targetDateStr;
+      });
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Service Record Detected',
+          `A "${serviceType}" service record already exists on this date (${targetDateStr}).`
+        );
+        setLoading(false);
+        return;
       }
+
+      const payload = {
+        date: date.toISOString(),
+        serviceType,
+        serviceCenter: serviceCenter || undefined,
+        odometer: parsedOdometer,
+        cost: parsedCost,
+        notes: notes || undefined,
+      };
+
+      if (isEditing) {
+        await servicesApi.update(vehicleId, record.id, payload);
+      } else {
+        await servicesApi.create(vehicleId, payload);
+      }
+
+      navigation.goBack();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save service record');
     } finally {

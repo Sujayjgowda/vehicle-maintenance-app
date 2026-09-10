@@ -12,10 +12,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { remindersApi } from '../../api/resources';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import Badge from '../../components/Badge';
 import EmptyState from '../../components/EmptyState';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
+import { format } from 'date-fns';
 
 const typeIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
   SERVICE: 'build',
@@ -42,38 +44,35 @@ export default function ReminderListScreen({ route, navigation }: any) {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const handleMarkComplete = (item: any) => {
-    Alert.alert('Complete Reminder', `Mark "${item.title || item.type}" as completed?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Mark Complete',
-        onPress: async () => {
-          try {
-            await remindersApi.update(item.vehicleId, item.id, { status: 'COMPLETED' });
-            load();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to update reminder');
-          }
-        },
+    confirmAction(
+      'Complete Reminder',
+      `Mark "${item.title || item.type}" as completed?`,
+      async () => {
+        try {
+          await remindersApi.update(item.vehicleId, item.id, { status: 'COMPLETED' });
+          load();
+        } catch (e) {
+          Alert.alert('Error', 'Failed to update reminder');
+        }
       },
-    ]);
+      'Mark Complete'
+    );
   };
 
   const handleDelete = (item: any) => {
-    Alert.alert('Delete Reminder', 'Are you sure you want to remove this reminder?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await remindersApi.delete(item.vehicleId, item.id);
-            load();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to delete reminder');
-          }
-        },
+    confirmAction(
+      'Delete Reminder',
+      'Are you sure you want to remove this reminder?',
+      async () => {
+        try {
+          await remindersApi.delete(item.vehicleId, item.id);
+          load();
+        } catch (e) {
+          Alert.alert('Error', 'Failed to delete reminder');
+        }
       },
-    ]);
+      'Delete'
+    );
   };
 
   const getStatusVariant = (status: string) => {
@@ -87,10 +86,22 @@ export default function ReminderListScreen({ route, navigation }: any) {
     navigation.navigate('AddReminder', { vehicleId });
   };
 
+  const handleEdit = (item: any) => {
+    navigation.navigate('AddReminder', {
+      vehicleId: item.vehicleId || vehicleId,
+      record: item,
+    });
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
-        <View>
+        {navigation.canGoBack() && (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+        )}
+        <View style={{ flex: 1, marginLeft: navigation.canGoBack() ? spacing.sm : 0 }}>
           <Text style={styles.title}>🔔 Reminders</Text>
           <Text style={styles.subTitle}>Insurance, PUC, Service & Maintenance Alerts</Text>
         </View>
@@ -138,7 +149,7 @@ export default function ReminderListScreen({ route, navigation }: any) {
                   </Text>
                   <Text style={styles.cardSub}>
                     {item.vehicle ? `${item.vehicle.make} ${item.vehicle.model} • ` : ''}
-                    {item.dueDate ? `Due: ${new Date(item.dueDate).toLocaleDateString()} ` : ''}
+                    {item.dueDate ? `Due: ${format(new Date(item.dueDate), 'dd-MMM-yyyy')} ` : ''}
                     {item.dueKm ? `• At ${item.dueKm.toLocaleString()} KM` : ''}
                   </Text>
                 </View>
@@ -146,7 +157,7 @@ export default function ReminderListScreen({ route, navigation }: any) {
                 <Badge text={item.status} variant={getStatusVariant(item.status)} />
               </View>
 
-              {/* Action Buttons: Mark Done & Delete */}
+              {/* Action Buttons: Mark Done, Edit & Delete */}
               <View style={styles.cardActions}>
                 {!isDone ? (
                   <TouchableOpacity style={styles.actionDoneBtn} onPress={() => handleMarkComplete(item)}>
@@ -154,6 +165,10 @@ export default function ReminderListScreen({ route, navigation }: any) {
                     <Text style={styles.actionDoneText}>Mark as Done</Text>
                   </TouchableOpacity>
                 ) : null}
+                <TouchableOpacity style={styles.actionEditBtn} onPress={() => handleEdit(item)}>
+                  <Ionicons name="create-outline" size={15} color={colors.primary} />
+                  <Text style={styles.actionEditText}>Edit</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item)}>
                   <Ionicons name="trash-outline" size={16} color={colors.error} />
                 </TouchableOpacity>
@@ -174,6 +189,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
+  },
+  backBtn: {
+    padding: spacing.xs,
+    marginRight: spacing.xs,
   },
   title: { fontSize: fontSize.xl, fontWeight: '800', color: colors.text },
   subTitle: { fontSize: fontSize.xs, color: colors.textSecondary, marginTop: 2 },
@@ -232,6 +251,20 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '600',
     color: colors.success,
+  },
+  actionEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.primary + '12',
+    borderRadius: borderRadius.sm,
+  },
+  actionEditText: {
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    color: colors.primary,
   },
   actionDeleteBtn: {
     padding: 4,

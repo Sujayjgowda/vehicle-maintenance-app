@@ -12,9 +12,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { fuelApi } from '../../api/fuel';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
+import { format } from 'date-fns';
 
 export default function FuelListScreen({ route, navigation }: any) {
   const { vehicleId } = route.params;
@@ -43,21 +45,18 @@ export default function FuelListScreen({ route, navigation }: any) {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Fuel Record', 'Are you sure you want to delete this fuel record?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await fuelApi.delete(vehicleId, id);
-            load();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to delete fuel record');
-          }
-        },
-      },
-    ]);
+    confirmAction(
+      'Delete Fuel Record',
+      'Are you sure you want to delete this fuel record?',
+      async () => {
+        try {
+          await fuelApi.delete(vehicleId, id);
+          load();
+        } catch (e) {
+          Alert.alert('Error', 'Failed to delete fuel record');
+        }
+      }
+    );
   };
 
   return (
@@ -116,7 +115,7 @@ export default function FuelListScreen({ route, navigation }: any) {
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.cardDate}>{new Date(item.date).toLocaleDateString()}</Text>
+                  <Text style={styles.cardDate}>{format(new Date(item.date), 'dd-MMM-yyyy')}</Text>
                   <Text style={styles.cardSub}>
                     {item.liters} L • {item.odometerReading.toLocaleString()} KM
                   </Text>

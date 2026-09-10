@@ -4,9 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { repairsApi } from '../../api/resources';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
+import { format } from 'date-fns';
 
 export default function RepairListScreen({ route, navigation }: any) {
   const { vehicleId } = route.params;
@@ -30,21 +32,18 @@ export default function RepairListScreen({ route, navigation }: any) {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Repair Log', 'Are you sure you want to delete this repair log?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await repairsApi.delete(vehicleId, id);
-            load();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to delete repair log');
-          }
-        },
-      },
-    ]);
+    confirmAction(
+      'Delete Repair Log',
+      'Are you sure you want to delete this repair log?',
+      async () => {
+        try {
+          await repairsApi.delete(vehicleId, id);
+          load();
+        } catch (e) {
+          Alert.alert('Error', 'Failed to delete repair log');
+        }
+      }
+    );
   };
 
   return (
@@ -87,7 +86,7 @@ export default function RepairListScreen({ route, navigation }: any) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{item.description}</Text>
                   <Text style={styles.cardSub}>
-                    {new Date(item.date).toLocaleDateString()} • {item.odometer.toLocaleString()} KM
+                    {format(new Date(item.date), 'dd-MMM-yyyy')} • {item.odometer.toLocaleString()} KM
                   </Text>
                   {item.cause ? <Text style={styles.cardSub}>Reason: {item.cause}</Text> : null}
                   {item.location ? <Text style={styles.cardSub}>📍 {item.location}</Text> : null}

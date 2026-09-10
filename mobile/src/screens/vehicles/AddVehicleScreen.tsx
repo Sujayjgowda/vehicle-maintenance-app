@@ -3,20 +3,23 @@ import { StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, View, To
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { vehiclesApi } from '../../api/vehicles';
+import { confirmAction } from '../../utils/confirmAlert';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
-import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
+import { colors, spacing, borderRadius, fontSize } from '../../theme/colors';
 
 export default function AddVehicleScreen({ route, navigation }: any) {
-  const existingVehicle = route.params?.vehicle;
-  const isEditing = Boolean(existingVehicle);
+  const existingVehicle = route?.params?.vehicle;
+  const isEditing = !!existingVehicle;
 
   const [make, setMake] = useState(existingVehicle?.make || '');
   const [model, setModel] = useState(existingVehicle?.model || '');
   const [year, setYear] = useState(existingVehicle?.year ? String(existingVehicle.year) : '');
   const [plate, setPlate] = useState(existingVehicle?.licensePlate || '');
   const [odometer, setOdometer] = useState(
-    existingVehicle?.currentOdometer !== undefined ? String(existingVehicle.currentOdometer) : ''
+    existingVehicle?.currentOdometer !== undefined && existingVehicle?.currentOdometer !== null
+      ? String(existingVehicle.currentOdometer)
+      : ''
   );
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -29,29 +32,46 @@ export default function AddVehicleScreen({ route, navigation }: any) {
 
   const handleSubmit = async () => {
     if (!make || !model || !year || !plate) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert('Error', 'Please fill in all required fields (*)');
       return;
     }
     setLoading(true);
     try {
-      const payload = {
+      const cleanPlate = plate.trim().toUpperCase();
+
+      // Check for duplicate vehicle with same license plate
+      const existingRes = await vehiclesApi.getAll().catch(() => ({ data: [] }));
+      const allVehicles: any[] = existingRes.data || [];
+      const isDuplicate = allVehicles.some((v) => {
+        if (isEditing && v.id === existingVehicle.id) return false;
+        return v.licensePlate?.trim().toUpperCase() === cleanPlate;
+      });
+
+      if (isDuplicate) {
+        Alert.alert(
+          'Duplicate Vehicle Detected',
+          `A vehicle with license plate "${cleanPlate}" is already registered in your garage.`
+        );
+        setLoading(false);
+        return;
+      }
+
+      const payload: any = {
         make: make.trim(),
         model: model.trim(),
-        year: parseInt(year),
-        licensePlate: plate.trim().toUpperCase(),
-        currentOdometer: odometer ? parseInt(odometer) : 0,
+        year: parseInt(year, 10),
+        licensePlate: cleanPlate,
       };
+      if (odometer) payload.currentOdometer = parseFloat(odometer);
 
       if (isEditing) {
         await vehiclesApi.update(existingVehicle.id, payload);
-        Alert.alert('Success', 'Vehicle updated successfully');
       } else {
         await vehiclesApi.create(payload);
-        Alert.alert('Success', 'Vehicle added successfully');
       }
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || 'Failed to save vehicle');
+      Alert.alert('Error', e.response?.data?.message || (isEditing ? 'Failed to update vehicle' : 'Failed to add vehicle'));
     } finally {
       setLoading(false);
     }
@@ -59,27 +79,20 @@ export default function AddVehicleScreen({ route, navigation }: any) {
 
   const handleDelete = () => {
     if (!existingVehicle) return;
-    Alert.alert(
+    confirmAction(
       'Delete Vehicle',
       `Are you sure you want to delete ${existingVehicle.make} ${existingVehicle.model}? All associated records (fuel, expenses, services) will be permanently deleted.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await vehiclesApi.delete(existingVehicle.id);
-              navigation.navigate('VehicleList');
-            } catch (e: any) {
-              Alert.alert('Error', e.response?.data?.message || 'Failed to delete vehicle');
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ]
+      async () => {
+        setDeleting(true);
+        try {
+          await vehiclesApi.delete(existingVehicle.id);
+          navigation.navigate('VehicleList');
+        } catch (e: any) {
+          Alert.alert('Error', e.response?.data?.message || 'Failed to delete vehicle');
+        } finally {
+          setDeleting(false);
+        }
+      }
     );
   };
 

@@ -331,13 +331,11 @@ export default function DashboardScreen({ navigation }: any) {
                 const vFuel = getFuelType(v);
                 const isDiesel = vFuel === 'diesel';
                 const badgeColor = isDiesel ? '#F97316' : '#00F2FE';
-                const imgSrc = getVehicleImageSource(v);
                 const displayName = v.model?.toLowerCase().includes('creta')
                   ? 'Hyundai Creta'
                   : v.model?.toLowerCase().includes('himalayan')
                   ? 'RE Himalayan 450'
                   : `${v.make} ${v.model}`;
-                const isACar = isCar(v);
 
                 return (
                   <TouchableOpacity
@@ -348,28 +346,15 @@ export default function DashboardScreen({ navigation }: any) {
                       styles.vehicleCard,
                       styles.vehicleCardFit,
                       active && styles.vehicleCardActive,
-                      !isACar && styles.bikeVehicleCard,
                     ]}
                   >
                     {/* Glossy specular reflection */}
                     <View style={styles.glassReflection} pointerEvents="none" />
 
-                    {/* Vehicle Photo (Cars only) */}
-                    {isACar && (
-                      <View style={styles.vehicleCardImageWrap}>
-                        <Image
-                          source={imgSrc}
-                          style={styles.vehicleCardImage}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    )}
-
                     {/* Vehicle Name */}
                     <Text
                       style={[
                         styles.vehicleCardName,
-                        !isACar && styles.bikeName,
                         active && styles.vehicleCardNameActive,
                       ]}
                       numberOfLines={2}
@@ -384,7 +369,6 @@ export default function DashboardScreen({ navigation }: any) {
                         {
                           backgroundColor: isDiesel ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0, 242, 254, 0.12)',
                           borderColor: badgeColor,
-                          marginTop: !isACar ? 6 : 8,
                         },
                       ]}
                     >
@@ -417,13 +401,11 @@ export default function DashboardScreen({ navigation }: any) {
                 const vFuel = getFuelType(v);
                 const isDiesel = vFuel === 'diesel';
                 const badgeColor = isDiesel ? '#F97316' : '#00F2FE';
-                const imgSrc = getVehicleImageSource(v);
                 const displayName = v.model?.toLowerCase().includes('creta')
                   ? 'Hyundai Creta'
                   : v.model?.toLowerCase().includes('himalayan')
                   ? 'RE Himalayan 450'
                   : `${v.make} ${v.model}`;
-                const isACar = isCar(v);
 
                 return (
                   <TouchableOpacity
@@ -434,23 +416,12 @@ export default function DashboardScreen({ navigation }: any) {
                       styles.vehicleCard,
                       styles.vehicleCardScroll,
                       active && styles.vehicleCardActive,
-                      !isACar && styles.bikeVehicleCard,
                     ]}
                   >
                     <View style={styles.glassReflection} pointerEvents="none" />
-                    {isACar && (
-                      <View style={styles.vehicleCardImageWrap}>
-                        <Image
-                          source={imgSrc}
-                          style={styles.vehicleCardImage}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    )}
                     <Text
                       style={[
                         styles.vehicleCardName,
-                        !isACar && styles.bikeName,
                         active && styles.vehicleCardNameActive,
                       ]}
                       numberOfLines={2}
@@ -463,7 +434,6 @@ export default function DashboardScreen({ navigation }: any) {
                         {
                           backgroundColor: isDiesel ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0, 242, 254, 0.12)',
                           borderColor: badgeColor,
-                          marginTop: !isACar ? 6 : 8,
                         },
                       ]}
                     >
@@ -891,11 +861,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.08)',
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 12,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 195,
+    justifyContent: 'center',
+    minHeight: 105,
     position: 'relative',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
@@ -907,19 +877,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   vehicleCardScroll: {
-    width: 175,
-  },
-  bikeVehicleCard: {
-    justifyContent: 'center',
-    paddingVertical: 32,
-    gap: 8,
-  },
-  bikeName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#F1F5F9',
-    marginTop: 0,
-    lineHeight: 20,
+    width: 170,
   },
   vehicleCardActive: {
     borderColor: '#00F2FE',
@@ -940,31 +898,19 @@ const styles = StyleSheet.create({
     borderRadius: 55,
     backgroundColor: 'rgba(255,255,255,0.035)',
   },
-  vehicleCardImageWrap: {
-    width: '100%',
-    height: 94,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 4,
-  },
-  vehicleCardImage: {
-    width: '100%',
-    height: '100%',
-  },
   vehicleCardName: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     color: colors.neumorphTextSecondary,
     textAlign: 'center',
-    marginTop: 4,
-    letterSpacing: 0.2,
+    marginBottom: 8,
+    letterSpacing: 0.3,
   },
   vehicleCardNameActive: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '900',
   },
   fuelBadge: {
-    marginTop: 8,
     paddingHorizontal: 18,
     paddingVertical: 4,
     borderRadius: 14,

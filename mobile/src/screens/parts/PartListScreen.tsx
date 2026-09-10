@@ -4,9 +4,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { partsApi } from '../../api/resources';
+import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
+import { format } from 'date-fns';
 
 export default function PartListScreen({ route, navigation }: any) {
   const { vehicleId } = route.params;
@@ -30,21 +32,18 @@ export default function PartListScreen({ route, navigation }: any) {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('Delete Part Record', 'Are you sure you want to delete this part record?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await partsApi.delete(vehicleId, id);
-            load();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to delete part record');
-          }
-        },
-      },
-    ]);
+    confirmAction(
+      'Delete Part Record',
+      'Are you sure you want to delete this part record?',
+      async () => {
+        try {
+          await partsApi.delete(vehicleId, id);
+          load();
+        } catch (e) {
+          Alert.alert('Error', 'Failed to delete part record');
+        }
+      }
+    );
   };
 
   return (
@@ -87,10 +86,10 @@ export default function PartListScreen({ route, navigation }: any) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{item.componentName}</Text>
                   <Text style={styles.cardSub}>
-                    Installed: {new Date(item.installDate).toLocaleDateString()} • {item.installOdometer.toLocaleString()} KM
+                    Installed: {format(new Date(item.installDate), 'dd-MMM-yyyy')} • {item.installOdometer.toLocaleString()} KM
                   </Text>
                   {item.nextDueDate ? (
-                    <Text style={styles.due}>Next due: {new Date(item.nextDueDate).toLocaleDateString()}</Text>
+                    <Text style={styles.due}>Next due: {format(new Date(item.nextDueDate), 'dd-MMM-yyyy')}</Text>
                   ) : null}
                   {item.nextDueKm ? (
                     <Text style={styles.due}>Next due: {item.nextDueKm.toLocaleString()} KM</Text>

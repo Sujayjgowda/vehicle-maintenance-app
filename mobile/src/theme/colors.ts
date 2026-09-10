@@ -55,6 +55,21 @@ export const colors = {
   glassBg: 'rgba(15, 23, 42, 0.88)',
   glassBorder: 'rgba(255,255,255,0.08)',
   glassGlow: '#0D9488',
+
+  // ─── Cybernetic & 3D Stage (Digital Twin) ───
+  neonCyan: '#00F2FE',
+  neonCyanGlow: 'rgba(0, 242, 254, 0.25)',
+  neonAmber: '#FFB800',
+  neonAmberGlow: 'rgba(255, 184, 0, 0.25)',
+  neonGreen: '#00E676',
+  neonGreenGlow: 'rgba(0, 230, 118, 0.25)',
+  neonRed: '#FF3366',
+  stageDark: '#0B0F19',
+  stagePedestal: '#131B2E',
+  stageEdge: '#00F2FE',
+  tumblerBg: '#090D16',
+  tumblerBorder: '#1E293B',
+  tumblerText: '#F8FAFC',
 };
 
 export const spacing = {

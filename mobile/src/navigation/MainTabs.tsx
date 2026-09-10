@@ -96,7 +96,7 @@ export default function MainTabs() {
           if (route.name === 'DashboardTab') {
             iconName = focused ? 'speedometer' : 'speedometer-outline';
           } else if (route.name === 'VehiclesTab') {
-            iconName = focused ? 'bicycle' : 'bicycle-outline';
+            iconName = focused ? 'car-sport' : 'car-sport-outline';
           } else if (route.name === 'RemindersTab') {
             iconName = focused ? 'notifications' : 'notifications-outline';
           } else if (route.name === 'ProfileTab') {

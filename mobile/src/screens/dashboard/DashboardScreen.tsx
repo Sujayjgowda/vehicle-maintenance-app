@@ -479,6 +479,7 @@ export default function DashboardScreen({ navigation }: any) {
           <Animated.View style={[styles.telemetryCard, { opacity: fadeAnim }]}>
             <TouchableOpacity
               activeOpacity={0.9}
+              style={{ width: '100%', alignItems: 'center' }}
               onPress={() =>
                 navigation.navigate('VehiclesTab', {
                   screen: 'VehicleDetail',
@@ -486,16 +487,23 @@ export default function DashboardScreen({ navigation }: any) {
                 })
               }
             >
-              <View style={styles.telemetryHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.telemetryTitle}>
-                    {selectedVehicle.make} {selectedVehicle.model}
-                  </Text>
-                  <View style={styles.plateRow}>
-                    <Text style={styles.plateText}>{selectedVehicle.licensePlate}</Text>
-                    <Text style={styles.yearText}>• {selectedVehicle.year}</Text>
-                  </View>
+              {/* 1. Vehicle Name */}
+              <Text style={styles.telemetryTitle}>
+                {selectedVehicle.make} {selectedVehicle.model}
+              </Text>
+
+              {/* 2. Vehicle Number & Make */}
+              <View style={styles.plateRow}>
+                <View style={styles.plateBadge}>
+                  <Text style={styles.plateText}>{selectedVehicle.licensePlate}</Text>
                 </View>
+                <Text style={styles.makeYearText}>
+                  {selectedVehicle.make} • {selectedVehicle.year}
+                </Text>
+              </View>
+
+              {/* 3. Rolling Odometer */}
+              <View style={styles.odometerRow}>
                 <MechanicalOdometer
                   odometer={selectedVehicle.currentOdometer || 0}
                   label=""
@@ -503,7 +511,7 @@ export default function DashboardScreen({ navigation }: any) {
                 />
               </View>
 
-              {/* Next Service Progress Bar */}
+              {/* 4. Next Service */}
               <View style={styles.serviceBarWrap}>
                 <View style={styles.serviceBarTrack}>
                   <Animated.View
@@ -525,7 +533,10 @@ export default function DashboardScreen({ navigation }: any) {
                   />
                 </View>
                 <View style={styles.serviceBarFooter}>
-                  <Text style={styles.serviceBarLabel}>Next Service</Text>
+                  <View style={styles.serviceLabelRow}>
+                    <Ionicons name="speedometer-outline" size={13} color={colors.neumorphTextSecondary} />
+                    <Text style={styles.serviceBarLabel}>Next Service</Text>
+                  </View>
                   <Text style={styles.serviceBarValue}>{kmToService.toLocaleString()} KM away</Text>
                 </View>
               </View>
@@ -941,8 +952,8 @@ const styles = StyleSheet.create({
   // ─── Selected Vehicle Telemetry ───
   telemetryCard: {
     backgroundColor: '#0D1324',
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 22,
+    padding: 18,
     marginTop: 6,
     borderWidth: 1,
     borderColor: 'rgba(0, 242, 254, 0.18)',
@@ -951,35 +962,52 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 10,
     elevation: 6,
-  },
-  telemetryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
   },
   telemetryTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
     color: '#FFFFFF',
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
   plateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 3,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  plateBadge: {
+    backgroundColor: 'rgba(0, 242, 254, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 242, 254, 0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   plateText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.neonCyan,
     fontFamily: 'monospace',
+    letterSpacing: 0.8,
   },
-  yearText: {
+  makeYearText: {
     fontSize: 12,
     color: colors.neumorphTextSecondary,
+    fontWeight: '600',
+  },
+  odometerRow: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
   },
   serviceBarWrap: {
-    marginTop: 14,
+    width: '100%',
+    marginTop: 10,
   },
   serviceBarTrack: {
     height: 6,
@@ -995,15 +1023,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
+    marginTop: 8,
+  },
+  serviceLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   serviceBarLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: colors.neumorphTextSecondary,
     fontWeight: '600',
   },
   serviceBarValue: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#F8FAFC',
     fontWeight: '800',
   },

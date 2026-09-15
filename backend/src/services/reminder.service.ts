@@ -24,8 +24,8 @@ export async function createReminder(vehicleId: string, data: CreateReminderInpu
       vehicleId,
       title: data.title,
       type: data.type as any,
-      dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-      dueKm: data.dueKm,
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      dueKm: data.dueKm ?? null,
       status: (data.status as any) || "PENDING",
     },
   });
@@ -44,8 +44,8 @@ export async function updateReminder(id: string, vehicleId: string, data: Update
     data: {
       ...(data.title !== undefined && { title: data.title }),
       ...(data.type !== undefined && { type: data.type as any }),
-      ...(data.dueDate !== undefined && { dueDate: new Date(data.dueDate) }),
-      ...(data.dueKm !== undefined && { dueKm: data.dueKm }),
+      ...(data.dueDate !== undefined && { dueDate: data.dueDate ? new Date(data.dueDate) : null }),
+      ...(data.dueKm !== undefined && { dueKm: data.dueKm ?? null }),
       ...(data.status !== undefined && { status: data.status as any }),
     },
   });

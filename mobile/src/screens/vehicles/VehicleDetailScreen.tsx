@@ -10,6 +10,7 @@ import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import MetricCard from '../../components/MetricCard';
 import ExpenseReportModal from '../../components/ExpenseReportModal';
+import { enrichVehiclesWithFuelType } from '../../utils/vehicleMetaStorage';
 
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
@@ -28,7 +29,8 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
         fuelApi.getSummary(vehicleId).catch(() => ({ data: null })),
         expensesApi.getAll(vehicleId).catch(() => ({ data: [] })),
       ]);
-      setVehicle(vRes.data);
+      const enriched = await enrichVehiclesWithFuelType(vRes.data ? [vRes.data] : []);
+      setVehicle(enriched[0] || vRes.data);
       setFuelSummary(fRes.data);
       const exps = Array.isArray(expRes.data) ? expRes.data : [];
       const expSum = exps.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);

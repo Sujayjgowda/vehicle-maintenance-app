@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { vehiclesApi } from '../../api/vehicles';
 import { confirmAction } from '../../utils/confirmAlert';
+import { saveVehicleFuelType } from '../../utils/vehicleMetaStorage';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { colors, spacing, borderRadius, fontSize } from '../../theme/colors';
@@ -83,11 +84,18 @@ export default function AddVehicleScreen({ route, navigation }: any) {
         payload.currentOdometer = Math.round(parseFloat(odometer));
       }
 
+      let savedVehicleId = existingVehicle?.id;
       if (isEditing) {
-        await vehiclesApi.update(existingVehicle.id, payload);
+        const updateRes = await vehiclesApi.update(existingVehicle.id, payload);
+        savedVehicleId = updateRes.data?.id || existingVehicle.id;
       } else {
-        await vehiclesApi.create(payload);
+        const createRes = await vehiclesApi.create(payload);
+        savedVehicleId = createRes.data?.id;
       }
+
+      // Persist fuelType locally for instant dashboard & offline sync
+      await saveVehicleFuelType(savedVehicleId || '', cleanPlate, payload.fuelType);
+
       handleBack();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || (isEditing ? 'Failed to update vehicle' : 'Failed to add vehicle'));

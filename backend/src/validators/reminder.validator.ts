@@ -3,8 +3,8 @@ import { z } from "zod";
 export const createReminderSchema = z.object({
   title: z.string().optional(),
   type: z.enum(["SERVICE", "PUC", "INSURANCE", "PART_REPLACEMENT"]),
-  dueDate: z.string().datetime().optional(),
-  dueKm: z.number().int().min(0).optional(),
+  dueDate: z.string().datetime().nullable().optional(),
+  dueKm: z.number().int().min(0).nullable().optional(),
   status: z.enum(["PENDING", "COMPLETED", "CANCELLED", "OVERDUE"]).optional(),
 });
 

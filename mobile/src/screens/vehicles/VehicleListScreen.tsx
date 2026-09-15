@@ -7,6 +7,7 @@ import { vehiclesApi } from '../../api/vehicles';
 import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import EmptyState from '../../components/EmptyState';
+import { enrichVehiclesWithFuelType } from '../../utils/vehicleMetaStorage';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
 export default function VehicleListScreen({ navigation }: any) {
@@ -16,7 +17,8 @@ export default function VehicleListScreen({ navigation }: any) {
   const load = useCallback(async () => {
     try {
       const res = await vehiclesApi.getAll();
-      setVehicles(res.data);
+      const enriched = await enrichVehiclesWithFuelType(res.data || []);
+      setVehicles(enriched);
     } catch (e) { console.log(e); }
   }, []);
 
@@ -51,7 +53,7 @@ export default function VehicleListScreen({ navigation }: any) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{item.make} {item.model}</Text>
-            <Text style={styles.sub}>{item.licensePlate} • {item.year}</Text>
+            <Text style={styles.sub}>{item.licensePlate} • {item.year} • {item.fuelType || 'PETROL'}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </View>

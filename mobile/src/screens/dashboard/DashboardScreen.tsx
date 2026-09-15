@@ -26,6 +26,7 @@ import { getLiveCityPrice, CityPrice } from '../../api/liveFuelService';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
 import MechanicalOdometer from '../../components/MechanicalOdometer';
+import { enrichVehiclesWithFuelType } from '../../utils/vehicleMetaStorage';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -99,17 +100,31 @@ function isCar(vehicle: any): boolean {
   );
 }
 
-function getFuelType(vehicle: any): 'diesel' | 'petrol' {
+function getFuelType(vehicle: any): string {
   if (vehicle?.fuelType) {
-    const ft = String(vehicle.fuelType).toLowerCase();
-    if (ft === 'diesel') return 'diesel';
-    return 'petrol';
+    return String(vehicle.fuelType).toLowerCase();
   }
-  return isCar(vehicle) ? 'diesel' : 'petrol';
+  return 'petrol';
 }
 
-function getFuelBadgeColor(type: 'diesel' | 'petrol'): string {
-  return type === 'diesel' ? '#F97316' : colors.neonCyan;
+function getFuelBadgeConfig(fuelType: string): { label: string; color: string; bg: string } {
+  const ft = String(fuelType || '').toLowerCase();
+  switch (ft) {
+    case 'diesel':
+      return { label: 'DIESEL', color: '#F97316', bg: 'rgba(249, 115, 22, 0.12)' };
+    case 'cng':
+      return { label: 'CNG', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)' };
+    case 'electric':
+    case 'ev':
+      return { label: 'ELECTRIC', color: '#8B5CF6', bg: 'rgba(139, 92, 246, 0.12)' };
+    case 'petrol':
+    default:
+      return { label: 'PETROL', color: '#00F2FE', bg: 'rgba(0, 242, 254, 0.12)' };
+  }
+}
+
+function getFuelBadgeColor(type: string): string {
+  return getFuelBadgeConfig(type).color;
 }
 
 export default function DashboardScreen({ navigation }: any) {
@@ -149,7 +164,8 @@ export default function DashboardScreen({ navigation }: any) {
   const loadVehicles = useCallback(async () => {
     try {
       const res = await vehiclesApi.getAll();
-      setVehicles(res.data || []);
+      const enriched = await enrichVehiclesWithFuelType(res.data || []);
+      setVehicles(enriched);
     } catch (e) {
       console.log('Vehicle load error:', e);
     }
@@ -358,9 +374,8 @@ export default function DashboardScreen({ navigation }: any) {
             <View style={styles.vehicleRowFit}>
               {vehicles.map((v, idx) => {
                 const active = idx === selectedIdx;
-                const vFuel = getFuelType(v);
-                const isDiesel = vFuel === 'diesel';
-                const badgeColor = isDiesel ? '#F97316' : '#00F2FE';
+                const vFuel = v.fuelType || getFuelType(v);
+                const badgeConfig = getFuelBadgeConfig(vFuel);
                 const displayName = v.model?.toLowerCase().includes('creta')
                   ? 'Hyundai Creta'
                   : v.model?.toLowerCase().includes('himalayan')
@@ -392,13 +407,13 @@ export default function DashboardScreen({ navigation }: any) {
                       {displayName}
                     </Text>
 
-                    {/* Fuel Type Badge (DIESEL / PETROL) */}
+                    {/* Fuel Type Badge (DIESEL / PETROL / CNG / ELECTRIC) */}
                     <View
                       style={[
                         styles.fuelBadge,
                         {
-                          backgroundColor: isDiesel ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0, 242, 254, 0.12)',
-                          borderColor: badgeColor,
+                          backgroundColor: badgeConfig.bg,
+                          borderColor: badgeConfig.color,
                         },
                       ]}
                     >
@@ -406,14 +421,14 @@ export default function DashboardScreen({ navigation }: any) {
                         style={[
                           styles.fuelBadgeText,
                           {
-                            color: badgeColor,
-                            textShadowColor: isDiesel ? 'rgba(249, 115, 22, 0.6)' : 'rgba(0, 242, 254, 0.6)',
+                            color: badgeConfig.color,
+                            textShadowColor: badgeConfig.color,
                             textShadowOffset: { width: 0, height: 0 },
                             textShadowRadius: 6,
                           },
                         ]}
                       >
-                        {vFuel.toUpperCase()}
+                        {badgeConfig.label}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -428,9 +443,8 @@ export default function DashboardScreen({ navigation }: any) {
             >
               {vehicles.map((v, idx) => {
                 const active = idx === selectedIdx;
-                const vFuel = getFuelType(v);
-                const isDiesel = vFuel === 'diesel';
-                const badgeColor = isDiesel ? '#F97316' : '#00F2FE';
+                const vFuel = v.fuelType || getFuelType(v);
+                const badgeConfig = getFuelBadgeConfig(vFuel);
                 const displayName = v.model?.toLowerCase().includes('creta')
                   ? 'Hyundai Creta'
                   : v.model?.toLowerCase().includes('himalayan')
@@ -462,8 +476,8 @@ export default function DashboardScreen({ navigation }: any) {
                       style={[
                         styles.fuelBadge,
                         {
-                          backgroundColor: isDiesel ? 'rgba(249, 115, 22, 0.12)' : 'rgba(0, 242, 254, 0.12)',
-                          borderColor: badgeColor,
+                          backgroundColor: badgeConfig.bg,
+                          borderColor: badgeConfig.color,
                         },
                       ]}
                     >
@@ -471,14 +485,14 @@ export default function DashboardScreen({ navigation }: any) {
                         style={[
                           styles.fuelBadgeText,
                           {
-                            color: badgeColor,
-                            textShadowColor: isDiesel ? 'rgba(249, 115, 22, 0.6)' : 'rgba(0, 242, 254, 0.6)',
+                            color: badgeConfig.color,
+                            textShadowColor: badgeConfig.color,
                             textShadowOffset: { width: 0, height: 0 },
                             textShadowRadius: 6,
                           },
                         ]}
                       >
-                        {vFuel.toUpperCase()}
+                        {badgeConfig.label}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -607,7 +621,7 @@ export default function DashboardScreen({ navigation }: any) {
                   <View style={styles.fuelStatCard}>
                     <View style={styles.liveLabelRow}>
                       <Text style={styles.fuelStatLabel}>
-                        Live {fuelType === 'diesel' ? 'Diesel' : 'Petrol'}
+                        Live {fuelType === 'diesel' ? 'Diesel' : (fuelType === 'cng' ? 'CNG' : (fuelType === 'electric' ? 'EV' : 'Petrol'))}
                       </Text>
                       <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
                       <Text style={styles.liveTag}>LIVE</Text>
@@ -616,7 +630,7 @@ export default function DashboardScreen({ navigation }: any) {
                       ₹{livePrice?.toFixed(2) || '—'}/L
                     </Text>
                     <Text style={styles.fuelCityText}>
-                      {fuelType.toUpperCase()} • Bengaluru
+                      {getFuelBadgeConfig(fuelType).label} • Bengaluru
                     </Text>
                   </View>
 

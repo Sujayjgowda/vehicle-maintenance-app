@@ -5,6 +5,7 @@ export const createVehicleSchema = z.object({
   model: z.string().min(1, "Model is required"),
   year: z.number().int().min(1900).max(new Date().getFullYear() + 1),
   licensePlate: z.string().min(1, "License plate is required"),
+  fuelType: z.string().optional(),
   currentOdometer: z.number().int().min(0).optional(),
 });
 

@@ -3,7 +3,7 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fontSize } from '../theme/colors';
 
 // Screens
@@ -60,33 +60,10 @@ function RemindersStackNavigator() {
   );
 }
 
-// Custom glassmorphism tab bar background
-function GlassTabBarBackground() {
-  return (
-    <View style={StyleSheet.absoluteFill}>
-      <BlurView
-        intensity={40}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={tabBarBgStyles.overlay} />
-    </View>
-  );
-}
-
-const tabBarBgStyles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.glassBg,
-  },
-});
-
-
 export default function MainTabs() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'ios' ? 16 : 8);
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -106,25 +83,24 @@ export default function MainTabs() {
           return (
             <View style={focused ? glowStyles.glowWrap : glowStyles.noGlow}>
               {focused && <View style={glowStyles.glowHalo} />}
-              <Ionicons name={iconName} size={size} color={focused ? colors.glassGlow : '#64748B'} />
+              <Ionicons name={iconName} size={size} color={focused ? colors.neonCyan : '#64748B'} />
             </View>
           );
         },
-        tabBarActiveTintColor: colors.glassGlow,
+        tabBarActiveTintColor: colors.neonCyan,
         tabBarInactiveTintColor: '#64748B',
-        tabBarBackground: () => <GlassTabBarBackground />,
         tabBarStyle: {
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: Platform.OS === 'ios' ? 88 : 68,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-          paddingTop: 8,
+          backgroundColor: '#0B0F19',
           borderTopWidth: 1,
-          borderTopColor: colors.glassBorder,
-          backgroundColor: 'transparent',
-          elevation: 0,
+          borderTopColor: '#1E293B',
+          height: 58 + bottomInset,
+          paddingBottom: bottomInset,
+          paddingTop: 6,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.3,
+          shadowRadius: 4,
         },
         tabBarLabelStyle: {
           fontSize: fontSize.xs,

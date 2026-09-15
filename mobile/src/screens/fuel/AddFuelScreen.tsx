@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { isAfter, startOfDay } from 'date-fns';
 import { fuelApi } from '../../api/fuel';
+import { vehiclesApi } from '../../api/vehicles';
 import { getLiveCityPrice } from '../../api/liveFuelService';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
@@ -83,6 +84,18 @@ export default function AddFuelScreen({ route, navigation }: any) {
       }
     }).catch(() => {});
   }, []);
+
+  // Preselect vehicle fuel type
+  useEffect(() => {
+    if (!record && vehicleId) {
+      vehiclesApi.getById(vehicleId).then((res) => {
+        if (res.data?.fuelType) {
+          const ft = String(res.data.fuelType).toUpperCase();
+          setFuelType(ft);
+        }
+      }).catch(() => {});
+    }
+  }, [vehicleId, record]);
 
   // Fetch real-time live daily fuel rates
   const loadPricesForCity = async (city: string) => {

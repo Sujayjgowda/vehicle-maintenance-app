@@ -16,6 +16,7 @@ export default function AddVehicleScreen({ route, navigation }: any) {
   const [model, setModel] = useState(existingVehicle?.model || '');
   const [year, setYear] = useState(existingVehicle?.year ? String(existingVehicle.year) : '');
   const [plate, setPlate] = useState(existingVehicle?.licensePlate || '');
+  const [fuelType, setFuelType] = useState(existingVehicle?.fuelType || 'PETROL');
   const [odometer, setOdometer] = useState(
     existingVehicle?.currentOdometer !== undefined && existingVehicle?.currentOdometer !== null
       ? String(existingVehicle.currentOdometer)
@@ -24,11 +25,26 @@ export default function AddVehicleScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const handleBack = () => {
+    if (route?.params?.returnTo) {
+      navigation.navigate(route.params.returnTo);
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('VehicleList');
+    }
+  };
+
   useEffect(() => {
     navigation.setOptions({
       title: isEditing ? 'Edit Vehicle' : 'Add Vehicle',
+      headerLeft: () => (
+        <TouchableOpacity onPress={handleBack} style={{ marginRight: spacing.md, padding: 4 }}>
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
+        </TouchableOpacity>
+      ),
     });
-  }, [navigation, isEditing]);
+  }, [navigation, isEditing, route?.params?.returnTo]);
 
   const handleSubmit = async () => {
     if (!make || !model || !year || !plate) {
@@ -61,15 +77,18 @@ export default function AddVehicleScreen({ route, navigation }: any) {
         model: model.trim(),
         year: parseInt(year, 10),
         licensePlate: cleanPlate,
+        fuelType: fuelType || 'PETROL',
       };
-      if (odometer) payload.currentOdometer = parseFloat(odometer);
+      if (odometer && !isNaN(parseFloat(odometer))) {
+        payload.currentOdometer = Math.round(parseFloat(odometer));
+      }
 
       if (isEditing) {
         await vehiclesApi.update(existingVehicle.id, payload);
       } else {
         await vehiclesApi.create(payload);
       }
-      navigation.goBack();
+      handleBack();
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || (isEditing ? 'Failed to update vehicle' : 'Failed to add vehicle'));
     } finally {
@@ -104,6 +123,47 @@ export default function AddVehicleScreen({ route, navigation }: any) {
           <Input label="Model *" value={model} onChangeText={setModel} placeholder="e.g. Innova" />
           <Input label="Year *" value={year} onChangeText={setYear} placeholder="e.g. 2022" keyboardType="numeric" />
           <Input label="License Plate *" value={plate} onChangeText={setPlate} placeholder="e.g. KA-01-AB-1234" autoCapitalize="characters" />
+          
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Fuel Type *</Text>
+            <View style={styles.fuelOptionsRow}>
+              {[
+                { id: 'PETROL', label: 'Petrol', icon: 'flame', color: '#F97316' },
+                { id: 'DIESEL', label: 'Diesel', icon: 'water', color: '#0EA5E9' },
+                { id: 'CNG', label: 'CNG', icon: 'leaf', color: '#10B981' },
+                { id: 'ELECTRIC', label: 'Electric', icon: 'flash', color: '#8B5CF6' },
+              ].map((opt) => {
+                const isSelected = (fuelType || 'PETROL').toUpperCase() === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[
+                      styles.fuelChip,
+                      isSelected && { backgroundColor: opt.color + '18', borderColor: opt.color, borderWidth: 1.5 },
+                    ]}
+                    onPress={() => setFuelType(opt.id)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={opt.icon as any}
+                      size={16}
+                      color={isSelected ? opt.color : colors.textMuted}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text
+                      style={[
+                        styles.fuelChipText,
+                        isSelected && { color: opt.color, fontWeight: '700' },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           <Input label="Current Odometer (KM)" value={odometer} onChangeText={setOdometer} placeholder="e.g. 15000" keyboardType="numeric" />
           
           <Button
@@ -133,6 +193,36 @@ export default function AddVehicleScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   container: { padding: spacing.xl, paddingBottom: spacing.xxl * 2 },
+  fieldGroup: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  fuelOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
+  },
+  fuelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  fuelChipText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
   deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',

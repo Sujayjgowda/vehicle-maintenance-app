@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { vehiclesApi } from '../../api/vehicles';
 import { fuelApi } from '../../api/fuel';
+import { expensesApi } from '../../api/resources';
 import { confirmAction } from '../../utils/confirmAlert';
 import Card from '../../components/Card';
 import MetricCard from '../../components/MetricCard';
@@ -16,17 +17,22 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
   const { vehicleId } = route.params;
   const [vehicle, setVehicle] = useState<any>(null);
   const [fuelSummary, setFuelSummary] = useState<any>(null);
+  const [totalExpenses, setTotalExpenses] = useState<number>(0);
   const [refreshing, setRefreshing] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
-      const [vRes, fRes] = await Promise.all([
+      const [vRes, fRes, expRes] = await Promise.all([
         vehiclesApi.getById(vehicleId),
         fuelApi.getSummary(vehicleId).catch(() => ({ data: null })),
+        expensesApi.getAll(vehicleId).catch(() => ({ data: [] })),
       ]);
       setVehicle(vRes.data);
       setFuelSummary(fRes.data);
+      const exps = Array.isArray(expRes.data) ? expRes.data : [];
+      const expSum = exps.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+      setTotalExpenses(expSum);
     } catch (e) {
       console.log(e);
     }
@@ -106,14 +112,14 @@ export default function VehicleDetailScreen({ route, navigation }: any) {
             <Ionicons name="car-sport" size={32} color={colors.textOnPrimary} />
           </View>
           <Text style={styles.heroName}>{vehicle.make} {vehicle.model}</Text>
-          <Text style={styles.heroSub}>{vehicle.licensePlate} • {vehicle.year}</Text>
+          <Text style={styles.heroSub}>{vehicle.licensePlate} • {vehicle.year} • {vehicle.fuelType || 'PETROL'}</Text>
         </Card>
 
         <View style={styles.metricsGrid}>
           <MetricCard title="Odometer" value={`${vehicle.currentOdometer?.toLocaleString()} KM`} icon="speedometer" highlight />
           <MetricCard title="Avg Mileage" value={fuelSummary?.latestAvgKmpl ? `${fuelSummary.latestAvgKmpl} KM/L` : '—'} icon="analytics" iconColor={colors.info} />
+          <MetricCard title="Total Spent" value={totalExpenses > 0 ? `₹${Math.round(totalExpenses).toLocaleString()}` : (fuelSummary?.totalCost ? `₹${Math.round(fuelSummary.totalCost).toLocaleString()}` : '₹0')} icon="wallet" iconColor={colors.accent} />
           <MetricCard title="Fuel Cost" value={fuelSummary?.totalCost ? `₹${Math.round(fuelSummary.totalCost).toLocaleString()}` : '₹0'} icon="flame" iconColor={colors.fuel} />
-          <MetricCard title="Total Liters" value={fuelSummary?.totalLiters ? `${fuelSummary.totalLiters.toFixed(1)} L` : '0 L'} icon="water" iconColor={colors.accent} />
         </View>
 
         <Text style={styles.sectionTitle}>Records & Management</Text>

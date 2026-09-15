@@ -100,6 +100,11 @@ function isCar(vehicle: any): boolean {
 }
 
 function getFuelType(vehicle: any): 'diesel' | 'petrol' {
+  if (vehicle?.fuelType) {
+    const ft = String(vehicle.fuelType).toLowerCase();
+    if (ft === 'diesel') return 'diesel';
+    return 'petrol';
+  }
   return isCar(vehicle) ? 'diesel' : 'petrol';
 }
 
@@ -190,6 +195,9 @@ export default function DashboardScreen({ navigation }: any) {
   useFocusEffect(
     useCallback(() => {
       loadVehicles();
+      if (selectedVehicle?.id) {
+        loadVehicleData(selectedVehicle.id);
+      }
       // On Dashboard (dark slate #080C18), notification/status bar text and icons MUST be white
       RNStatusBar.setBarStyle('light-content');
       if (Platform.OS === 'android') {
@@ -202,7 +210,7 @@ export default function DashboardScreen({ navigation }: any) {
           RNStatusBar.setBackgroundColor('#F8FAFC');
         }
       };
-    }, [loadVehicles])
+    }, [loadVehicles, selectedVehicle?.id, loadVehicleData])
   );
 
   const onRefresh = async () => {
@@ -483,7 +491,7 @@ export default function DashboardScreen({ navigation }: any) {
         {vehicles.length === 0 && (
           <TouchableOpacity
             style={styles.emptyAddCard}
-            onPress={() => navigation.navigate('VehiclesTab', { screen: 'AddVehicle' })}
+            onPress={() => navigation.navigate('VehiclesTab', { screen: 'AddVehicle', params: { returnTo: 'DashboardTab' } })}
           >
             <Ionicons name="add-circle-outline" size={36} color={colors.neonCyan} />
             <Text style={styles.emptyAddText}>Add your first vehicle</Text>

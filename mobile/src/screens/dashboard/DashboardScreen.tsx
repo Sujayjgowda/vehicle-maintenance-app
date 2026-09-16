@@ -23,6 +23,7 @@ import { vehiclesApi } from '../../api/vehicles';
 import { fuelApi } from '../../api/fuel';
 import { expensesApi, remindersApi } from '../../api/resources';
 import { getLiveCityPrice, CityPrice } from '../../api/liveFuelService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, fontSize, borderRadius } from '../../theme/colors';
 
 import MechanicalOdometer from '../../components/MechanicalOdometer';
@@ -138,6 +139,7 @@ export default function DashboardScreen({ navigation }: any) {
   const [vehFuelSummary, setVehFuelSummary] = useState<any>(null);
   const [vehReminders, setVehReminders] = useState<any[]>([]);
   const [livePrices, setLivePrices] = useState<CityPrice | null>(null);
+  const [fuelCity, setFuelCity] = useState('Bengaluru');
   const [refreshing, setRefreshing] = useState(false);
 
   // Animations
@@ -159,6 +161,19 @@ export default function DashboardScreen({ navigation }: any) {
   const selectedVehicle = vehicles[selectedIdx] || null;
   const fuelType = selectedVehicle ? getFuelType(selectedVehicle) : 'petrol';
   const fuelBadgeColor = getFuelBadgeColor(fuelType);
+
+  // Load live fuel price for user's preferred city or fallback to Bengaluru
+  const loadFuelPrice = useCallback(async () => {
+    try {
+      const savedCity = await AsyncStorage.getItem('@preferred_fuel_city');
+      const cityToUse = savedCity && savedCity.trim() ? savedCity.trim() : 'Bengaluru';
+      setFuelCity(cityToUse);
+      const prices = await getLiveCityPrice(cityToUse);
+      setLivePrices(prices);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // ─── Load vehicle list ───
   const loadVehicles = useCallback(async () => {
@@ -205,12 +220,13 @@ export default function DashboardScreen({ navigation }: any) {
   }, [selectedVehicle?.id, loadVehicleData]);
 
   useEffect(() => {
-    getLiveCityPrice('Bengaluru').then(setLivePrices).catch(() => {});
-  }, []);
+    loadFuelPrice();
+  }, [loadFuelPrice]);
 
   useFocusEffect(
     useCallback(() => {
       loadVehicles();
+      loadFuelPrice();
       if (selectedVehicle?.id) {
         loadVehicleData(selectedVehicle.id);
       }
@@ -226,14 +242,14 @@ export default function DashboardScreen({ navigation }: any) {
           RNStatusBar.setBackgroundColor('#F8FAFC');
         }
       };
-    }, [loadVehicles, selectedVehicle?.id, loadVehicleData])
+    }, [loadVehicles, loadFuelPrice, selectedVehicle?.id, loadVehicleData])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadVehicles();
     if (selectedVehicle?.id) await loadVehicleData(selectedVehicle.id);
-    getLiveCityPrice('Bengaluru').then(setLivePrices).catch(() => {});
+    await loadFuelPrice();
     setRefreshing(false);
   };
 
@@ -630,7 +646,7 @@ export default function DashboardScreen({ navigation }: any) {
                       ₹{livePrice?.toFixed(2) || '—'}/L
                     </Text>
                     <Text style={styles.fuelCityText}>
-                      {getFuelBadgeConfig(fuelType).label} • Bengaluru
+                      {getFuelBadgeConfig(fuelType).label} • {fuelCity}
                     </Text>
                   </View>
 

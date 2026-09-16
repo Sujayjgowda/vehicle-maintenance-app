@@ -22,23 +22,93 @@ import { getLiveCityPrice } from '../../api/liveFuelService';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import DatePickerInput from '../../components/DatePickerInput';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius, fontSize } from '../../theme/colors';
 
 const POPULAR_CITIES = [
   'Bengaluru',
+  'Hassan',
+  'Mysore',
+  'Mangalore',
+  'Mandya',
+  'Shivamogga',
+  'Belagavi',
+  'Hubli',
   'Delhi',
   'Mumbai',
   'Hyderabad',
   'Chennai',
-  'Kolkata',
   'Pune',
-  'Mysore',
-  'Mangalore',
-  'Ahmedabad',
-  'Jaipur',
-  'Lucknow',
-  'Chandigarh',
+  'Kolkata',
   'Kochi',
+];
+
+const LOCAL_INDIAN_CITIES: Array<{ name: string; value: string }> = [
+  // Karnataka Districts
+  { name: 'Hassan', value: 'hassan' },
+  { name: 'Bengaluru', value: 'bengaluru' },
+  { name: 'Mysuru (Mysore)', value: 'mysore' },
+  { name: 'Mangaluru (Mangalore)', value: 'mangalore' },
+  { name: 'Mandya', value: 'mandya' },
+  { name: 'Shivamogga (Shimoga)', value: 'shivamogga' },
+  { name: 'Udupi', value: 'udupi' },
+  { name: 'Belagavi (Belgaum)', value: 'belagavi' },
+  { name: 'Hubballi-Dharwad', value: 'hubli' },
+  { name: 'Tumakuru (Tumkur)', value: 'tumakuru' },
+  { name: 'Davanagere', value: 'davanagere' },
+  { name: 'Ballari (Bellary)', value: 'ballari' },
+  { name: 'Chikkamagaluru', value: 'chikkamagaluru' },
+  { name: 'Kodagu (Madikeri)', value: 'kodagu' },
+  { name: 'Kolar', value: 'kolar' },
+  { name: 'Ramanagara', value: 'ramanagara' },
+  { name: 'Chamarajanagar', value: 'chamarajanagar' },
+  { name: 'Chikkaballapura', value: 'chikkaballapura' },
+  { name: 'Chitradurga', value: 'chitradurga' },
+  { name: 'Bagalkote', value: 'bagalkote' },
+  { name: 'Vijayapura (Bijapur)', value: 'vijayapura' },
+  { name: 'Kalaburagi (Gulbarga)', value: 'kalaburagi' },
+  { name: 'Raichur', value: 'raichur' },
+  { name: 'Koppal', value: 'koppal' },
+  { name: 'Gadag', value: 'gadag' },
+  { name: 'Haveri', value: 'haveri' },
+  { name: 'Bidar', value: 'bidar' },
+  { name: 'Yadgir', value: 'yadgir' },
+  { name: 'Uttara Kannada (Karwar)', value: 'karwar' },
+
+  // Top Indian Metros & State Capitals
+  { name: 'Delhi', value: 'delhi' },
+  { name: 'Mumbai', value: 'mumbai' },
+  { name: 'Hyderabad', value: 'hyderabad' },
+  { name: 'Chennai', value: 'chennai' },
+  { name: 'Kolkata', value: 'kolkata' },
+  { name: 'Pune', value: 'pune' },
+  { name: 'Ahmedabad', value: 'ahmedabad' },
+  { name: 'Jaipur', value: 'jaipur' },
+  { name: 'Lucknow', value: 'lucknow' },
+  { name: 'Chandigarh', value: 'chandigarh' },
+  { name: 'Kochi', value: 'kochi' },
+  { name: 'Coimbatore', value: 'coimbatore' },
+  { name: 'Madurai', value: 'madurai' },
+  { name: 'Surat', value: 'surat' },
+  { name: 'Vadodara', value: 'vadodara' },
+  { name: 'Indore', value: 'indore' },
+  { name: 'Nagpur', value: 'nagpur' },
+  { name: 'Nashik', value: 'nashik' },
+  { name: 'Patna', value: 'patna' },
+  { name: 'Bhopal', value: 'bhopal' },
+  { name: 'Bhubaneswar', value: 'bhubaneswar' },
+  { name: 'Guwahati', value: 'guwahati' },
+  { name: 'Thiruvananthapuram', value: 'thiruvananthapuram' },
+  { name: 'Visakhapatnam', value: 'visakhapatnam' },
+  { name: 'Agra', value: 'agra' },
+  { name: 'Varanasi', value: 'varanasi' },
+  { name: 'Kanpur', value: 'kanpur' },
+  { name: 'Amritsar', value: 'amritsar' },
+  { name: 'Ludhiana', value: 'ludhiana' },
+  { name: 'Dehradun', value: 'dehradun' },
+  { name: 'Ranchi', value: 'ranchi' },
+  { name: 'Raipur', value: 'raipur' },
+  { name: 'Goa (Panaji)', value: 'goa' },
 ];
 
 export default function AddFuelScreen({ route, navigation }: any) {
@@ -47,9 +117,10 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
   const [date, setDate] = useState<Date>(record ? new Date(record.date) : new Date());
   const [selectedCity, setSelectedCity] = useState('Bengaluru');
+  const [chipCities, setChipCities] = useState<string[]>(POPULAR_CITIES);
   const [livePrices, setLivePrices] = useState<{ petrol: number; diesel: number; cng: number; city: string }>({
     city: 'Bengaluru',
-    petrol: 110.93,
+    petrol: 111.68,
     diesel: 98.80,
     cng: 79.50,
   });
@@ -57,12 +128,12 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
   // City Search Modal State
   const [cityModalVisible, setCityModalVisible] = useState(false);
-  const [allCities, setAllCities] = useState<Array<{ name: string; value: string }>>([]);
+  const [allCities, setAllCities] = useState<Array<{ name: string; value: string }>>(LOCAL_INDIAN_CITIES);
   const [citySearchQuery, setCitySearchQuery] = useState('');
 
   const [fuelType, setFuelType] = useState('PETROL');
   const [ratePerLiter, setRatePerLiter] = useState(
-    record && record.liters > 0 ? (record.cost / record.liters).toFixed(2) : '110.93'
+    record && record.liters > 0 ? (record.cost / record.liters).toFixed(2) : '111.68'
   );
   const [liters, setLiters] = useState(record ? String(record.liters) : '');
   const [cost, setCost] = useState(record ? String(record.cost) : '');
@@ -76,11 +147,46 @@ export default function AddFuelScreen({ route, navigation }: any) {
     });
   }, [isEditing, navigation]);
 
-  // Load all available cities for modal
+  // Select a city / district, add to chip bar if missing, and persist
+  const selectCity = (cityName: string) => {
+    const trimmed = cityName.trim();
+    if (!trimmed) return;
+    setSelectedCity(trimmed);
+
+    setChipCities((prev) => {
+      const exists = prev.some((c) => c.toLowerCase() === trimmed.toLowerCase());
+      if (!exists) {
+        return [trimmed, ...prev];
+      }
+      return prev;
+    });
+
+    AsyncStorage.setItem('@preferred_fuel_city', trimmed).catch(() => {});
+  };
+
+  // Load user's saved fuel city on mount
+  useEffect(() => {
+    AsyncStorage.getItem('@preferred_fuel_city').then((saved) => {
+      if (saved && saved.trim()) {
+        selectCity(saved.trim());
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Load all available cities for modal from backend, merge with local list
   useEffect(() => {
     fuelApi.getCities().then((res) => {
-      if (Array.isArray(res.data)) {
-        setAllCities(res.data);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        // Merge without duplicates
+        const existingNames = new Set(LOCAL_INDIAN_CITIES.map((c) => c.name.toLowerCase()));
+        const merged = [...LOCAL_INDIAN_CITIES];
+        for (const item of res.data) {
+          if (item && item.name && !existingNames.has(item.name.toLowerCase())) {
+            merged.push(item);
+            existingNames.add(item.name.toLowerCase());
+          }
+        }
+        setAllCities(merged);
       }
     }).catch(() => {});
   }, []);
@@ -105,21 +211,13 @@ export default function AddFuelScreen({ route, navigation }: any) {
       setLivePrices(priceData);
       // Auto update current rate if not in edit mode
       if (!isEditing) {
-        if (fuelType === 'PETROL' && priceData.petrol > 0) {
-          const pRate = priceData.petrol.toFixed(2);
-          setRatePerLiter(pRate);
+        const activeRate = fuelType === 'DIESEL' ? priceData.diesel : priceData.petrol;
+        if (activeRate > 0) {
+          const rateStr = activeRate.toFixed(2);
+          setRatePerLiter(rateStr);
           setLiters((prevLiters) => {
             if (prevLiters && parseFloat(prevLiters) > 0) {
-              setCost((parseFloat(prevLiters) * parseFloat(pRate)).toFixed(2));
-            }
-            return prevLiters;
-          });
-        } else if (fuelType === 'DIESEL' && priceData.diesel > 0) {
-          const dRate = priceData.diesel.toFixed(2);
-          setRatePerLiter(dRate);
-          setLiters((prevLiters) => {
-            if (prevLiters && parseFloat(prevLiters) > 0) {
-              setCost((parseFloat(prevLiters) * parseFloat(dRate)).toFixed(2));
+              setCost((parseFloat(prevLiters) * activeRate).toFixed(2));
             }
             return prevLiters;
           });
@@ -135,6 +233,20 @@ export default function AddFuelScreen({ route, navigation }: any) {
   useEffect(() => {
     loadPricesForCity(selectedCity);
   }, [selectedCity]);
+
+  // Auto-sync rate when vehicle fuelType changes
+  useEffect(() => {
+    if (livePrices && !isEditing) {
+      const activeRate = fuelType === 'DIESEL' ? livePrices.diesel : livePrices.petrol;
+      if (activeRate > 0) {
+        const rateStr = activeRate.toFixed(2);
+        setRatePerLiter(rateStr);
+        if (liters && parseFloat(liters) > 0) {
+          setCost((parseFloat(liters) * activeRate).toFixed(2));
+        }
+      }
+    }
+  }, [fuelType, isEditing]);
 
   // Select fuel type from Live Cards
   const handleSelectLiveRate = (type: string, rate: number) => {
@@ -305,13 +417,13 @@ export default function AddFuelScreen({ route, navigation }: any) {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.cityScroll}
             >
-              {POPULAR_CITIES.map((c) => {
+              {chipCities.map((c) => {
                 const active = selectedCity.toLowerCase() === c.toLowerCase();
                 return (
                   <TouchableOpacity
                     key={c}
                     style={[styles.cityChip, active && styles.cityChipActive]}
-                    onPress={() => setSelectedCity(c)}
+                    onPress={() => selectCity(c)}
                   >
                     <Text style={[styles.cityText, active && styles.cityTextActive]}>{c}</Text>
                   </TouchableOpacity>
@@ -402,48 +514,44 @@ export default function AddFuelScreen({ route, navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          {/* 3. Fuel Rate / Price Per Liter (Editable) */}
+          {/* Rate Per Liter Field */}
           <Input
-            label="Fuel Rate (₹/L) — Auto-filled from live API or customize"
+            label="Rate Per Litre (₹) *"
             value={ratePerLiter}
             onChangeText={handleRateChange}
-            placeholder="e.g. 110.93"
-            keyboardType="decimal-pad"
+            placeholder="e.g. 111.12"
+            keyboardType="numeric"
           />
 
-          {/* 4. Fuel Quantity and Cost with Bidirectional Auto-Calculation */}
-          <View style={styles.row}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <Input
-                label="Fuel Quantity (L) *"
-                value={liters}
-                onChangeText={handleLitersChange}
-                placeholder="e.g. 35"
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: spacing.sm }}>
-              <Input
-                label="Total Cost (₹) *"
-                value={cost}
-                onChangeText={handleCostChange}
-                placeholder="e.g. 3600"
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
+          {/* Fuel Quantity (Liters) */}
+          <Input
+            label="Fuel Quantity (Liters) *"
+            value={liters}
+            onChangeText={handleLitersChange}
+            placeholder="e.g. 35.5"
+            keyboardType="numeric"
+          />
 
-          {/* Live Price Calculation Summary Banner */}
+          {/* Total Cost */}
+          <Input
+            label="Total Cost (₹) *"
+            value={cost}
+            onChangeText={handleCostChange}
+            placeholder="e.g. 3500"
+            keyboardType="numeric"
+          />
+
+          {/* Calculation Summary Card */}
           {parseFloat(liters) > 0 && parseFloat(cost) > 0 ? (
             <View style={styles.summaryCard}>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Effective Rate</Text>
-                <Text style={styles.summaryValue}>₹{computedRate}/L</Text>
+                <Text style={styles.summaryLabel}>Fuel Filled</Text>
+                <Text style={styles.summaryValue}>{parseFloat(liters).toFixed(2)} L</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Total Filled</Text>
-                <Text style={styles.summaryValue}>{liters} Liters</Text>
+                <Text style={styles.summaryLabel}>Effective Rate</Text>
+                <Text style={styles.summaryValue}>₹{computedRate}/L</Text>
               </View>
               <View style={styles.divider} />
               <View style={styles.summaryItem}>
@@ -491,7 +599,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
               <Ionicons name="search" size={18} color={colors.textMuted} style={{ marginRight: spacing.xs }} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search city (e.g. Mysore, Jaipur, Patna)..."
+                placeholder="Search district/city (e.g. Hassan, Mysuru)..."
                 placeholderTextColor={colors.textMuted}
                 value={citySearchQuery}
                 onChangeText={setCitySearchQuery}
@@ -501,22 +609,57 @@ export default function AddFuelScreen({ route, navigation }: any) {
 
             <FlatList
               data={filteredCities}
-              keyExtractor={(item) => item.value}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.cityListItem}
-                  onPress={() => {
-                    setSelectedCity(item.name);
-                    setCityModalVisible(false);
-                    setCitySearchQuery('');
-                  }}
-                >
-                  <Text style={styles.cityListName}>{item.name}</Text>
-                  {selectedCity.toLowerCase() === item.name.toLowerCase() && (
-                    <Ionicons name="checkmark" size={18} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
+              keyExtractor={(item) => item.value || item.name}
+              ListHeaderComponent={
+                citySearchQuery.trim() &&
+                !filteredCities.some((c) => c.name.toLowerCase() === citySearchQuery.trim().toLowerCase()) ? (
+                  <TouchableOpacity
+                    style={[
+                      styles.cityListItem,
+                      {
+                        backgroundColor: colors.primary + '15',
+                        borderRadius: borderRadius.md,
+                        marginBottom: spacing.xs,
+                      },
+                    ]}
+                    onPress={() => {
+                      selectCity(citySearchQuery.trim());
+                      setCityModalVisible(false);
+                      setCitySearchQuery('');
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Ionicons name="location" size={18} color={colors.primary} />
+                      <Text style={[styles.cityListName, { color: colors.primary, fontWeight: '700' }]}>
+                        Use "{citySearchQuery.trim()}"
+                      </Text>
+                    </View>
+                    <Ionicons name="arrow-forward" size={18} color={colors.primary} />
+                  </TouchableOpacity>
+                ) : null
+              }
+              renderItem={({ item }) => {
+                const isSelected =
+                  selectedCity.toLowerCase() === item.name.toLowerCase() ||
+                  selectedCity.toLowerCase() === (item.value || '').toLowerCase();
+                return (
+                  <TouchableOpacity
+                    style={styles.cityListItem}
+                    onPress={() => {
+                      selectCity(item.name);
+                      setCityModalVisible(false);
+                      setCitySearchQuery('');
+                    }}
+                  >
+                    <Text style={[styles.cityListName, isSelected && { color: colors.primary, fontWeight: '700' }]}>
+                      {item.name}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={18} color={colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
             />
           </View>
         </View>

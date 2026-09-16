@@ -747,7 +747,7 @@ export default function DashboardScreen({ navigation }: any) {
                         onPress={() =>
                           navigation.navigate('VehiclesTab', {
                             screen: 'AddExpense',
-                            params: { vehicleId: selectedVehicle.id },
+                            params: { vehicleId: selectedVehicle.id, returnTo: 'DashboardTab' },
                           })
                         }
                       >
@@ -845,7 +845,7 @@ export default function DashboardScreen({ navigation }: any) {
                   onPress={() =>
                     navigation.navigate('VehiclesTab', {
                       screen: a.screen,
-                      params: { vehicleId: selectedVehicle.id },
+                      params: { vehicleId: selectedVehicle.id, returnTo: 'DashboardTab' },
                     })
                   }
                 >

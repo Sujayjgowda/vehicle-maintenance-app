@@ -39,10 +39,18 @@ export default function AddExpenseScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const returnTo = route.params?.returnTo;
     navigation.setOptions({
       title: isEditing ? 'Edit Expense' : 'Add Expense',
+      ...(returnTo ? {
+        headerLeft: () => (
+          <TouchableOpacity onPress={() => navigation.navigate(returnTo)} style={{ paddingRight: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ),
+      } : {}),
     });
-  }, [isEditing, navigation]);
+  }, [isEditing, navigation, route.params?.returnTo]);
 
   const selectedCategoryObj = categories.find((c) => c.id === category) || categories[0];
 
@@ -103,7 +111,11 @@ export default function AddExpenseScreen({ route, navigation }: any) {
         await expensesApi.create(vehicleId, payload);
       }
 
-      navigation.goBack();
+      if (route.params?.returnTo) {
+        navigation.navigate(route.params.returnTo);
+      } else {
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save expense');
     } finally {

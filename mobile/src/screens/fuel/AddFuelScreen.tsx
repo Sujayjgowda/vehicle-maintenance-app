@@ -140,12 +140,20 @@ export default function AddFuelScreen({ route, navigation }: any) {
   const [odometer, setOdometer] = useState(record ? String(record.odometerReading) : '');
   const [loading, setLoading] = useState(false);
 
-  // Set navigation header title dynamically
+  // Set navigation header title dynamically + override back button when launched from Dashboard
   useEffect(() => {
+    const returnTo = route.params?.returnTo;
     navigation.setOptions({
       title: isEditing ? 'Edit Fuel Record' : 'Add Fuel Record',
+      ...(returnTo ? {
+        headerLeft: () => (
+          <TouchableOpacity onPress={() => navigation.navigate(returnTo)} style={{ paddingRight: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ),
+      } : {}),
     });
-  }, [isEditing, navigation]);
+  }, [isEditing, navigation, route.params?.returnTo]);
 
   // Select a city / district, add to chip bar if missing, and persist
   const selectCity = (cityName: string) => {
@@ -371,7 +379,11 @@ export default function AddFuelScreen({ route, navigation }: any) {
         await fuelApi.create(vehicleId, payload);
       }
 
-      navigation.goBack();
+      if (route.params?.returnTo) {
+        navigation.navigate(route.params.returnTo);
+      } else {
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save fuel record');
     } finally {

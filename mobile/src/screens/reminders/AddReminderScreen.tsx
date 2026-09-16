@@ -52,10 +52,28 @@ export default function AddReminderScreen({ route, navigation }: any) {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
+    const returnTo = route.params?.returnTo;
     if (isEditing) {
-      navigation.setOptions({ title: 'Edit Reminder' });
+      navigation.setOptions({
+        title: 'Edit Reminder',
+        ...(returnTo ? {
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => navigation.navigate(returnTo)} style={{ paddingRight: 8 }}>
+              <Ionicons name="arrow-back" size={24} color={colors.primary} />
+            </TouchableOpacity>
+          ),
+        } : {}),
+      });
+    } else if (returnTo) {
+      navigation.setOptions({
+        headerLeft: () => (
+          <TouchableOpacity onPress={() => navigation.navigate(returnTo)} style={{ paddingRight: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ),
+      });
     }
-  }, [isEditing, navigation]);
+  }, [isEditing, navigation, route.params?.returnTo]);
 
   // Load vehicles if not provided
   useEffect(() => {
@@ -164,8 +182,12 @@ export default function AddReminderScreen({ route, navigation }: any) {
         });
       }
 
-      // Return back immediately with updated data
-      navigation.goBack();
+      // Return back — if launched from Dashboard, go to Dashboard tab directly
+      if (route.params?.returnTo) {
+        navigation.navigate(route.params.returnTo);
+      } else {
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || (isEditing ? 'Failed to update reminder' : 'Failed to save reminder'));
     } finally {
@@ -182,7 +204,11 @@ export default function AddReminderScreen({ route, navigation }: any) {
         setDeleting(true);
         try {
           await remindersApi.delete(selectedVehicleId, existingRecord.id);
-          navigation.goBack();
+          if (route.params?.returnTo) {
+            navigation.navigate(route.params.returnTo);
+          } else {
+            navigation.goBack();
+          }
         } catch (e: any) {
           Alert.alert('Error', e.response?.data?.message || 'Failed to delete reminder');
         } finally {

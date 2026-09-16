@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { isAfter, startOfDay } from 'date-fns';
 import { servicesApi } from '../../api/resources';
 import Input from '../../components/Input';
@@ -21,10 +22,18 @@ export default function AddServiceScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const returnTo = route.params?.returnTo;
     navigation.setOptions({
       title: isEditing ? 'Edit Service Record' : 'Add Service',
+      ...(returnTo ? {
+        headerLeft: () => (
+          <TouchableOpacity onPress={() => navigation.navigate(returnTo)} style={{ paddingRight: 8 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        ),
+      } : {}),
     });
-  }, [isEditing, navigation]);
+  }, [isEditing, navigation, route.params?.returnTo]);
 
   const handleSubmit = async () => {
     if (isAfter(startOfDay(date), startOfDay(new Date()))) {
@@ -88,7 +97,11 @@ export default function AddServiceScreen({ route, navigation }: any) {
         await servicesApi.create(vehicleId, payload);
       }
 
-      navigation.goBack();
+      if (route.params?.returnTo) {
+        navigation.navigate(route.params.returnTo);
+      } else {
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to save service record');
     } finally {

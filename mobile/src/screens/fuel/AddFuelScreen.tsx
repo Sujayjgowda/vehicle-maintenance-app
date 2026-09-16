@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -139,6 +139,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
   const [cost, setCost] = useState(record ? String(record.cost) : '');
   const [odometer, setOdometer] = useState(record ? String(record.odometerReading) : '');
   const [loading, setLoading] = useState(false);
+  const vehicleFuelLoaded = useRef(false);
 
   // Set navigation header title dynamically + override back button when launched from Dashboard
   useEffect(() => {
@@ -207,7 +208,12 @@ export default function AddFuelScreen({ route, navigation }: any) {
           const ft = String(res.data.fuelType).toUpperCase();
           setFuelType(ft);
         }
-      }).catch(() => {});
+        vehicleFuelLoaded.current = true;
+      }).catch(() => {
+        vehicleFuelLoaded.current = true;
+      });
+    } else {
+      vehicleFuelLoaded.current = true;
     }
   }, [vehicleId, record]);
 
@@ -217,9 +223,11 @@ export default function AddFuelScreen({ route, navigation }: any) {
     try {
       const priceData = await getLiveCityPrice(city);
       setLivePrices(priceData);
-      // Auto update current rate if not in edit mode
-      if (!isEditing) {
-        const activeRate = fuelType === 'DIESEL' ? priceData.diesel : priceData.petrol;
+      // Auto update current rate only if vehicle fuel type is already loaded and not in edit mode
+      if (!isEditing && vehicleFuelLoaded.current) {
+        const activeRate = fuelType === 'DIESEL' ? priceData.diesel
+          : fuelType === 'CNG' ? priceData.cng
+          : priceData.petrol;
         if (activeRate > 0) {
           const rateStr = activeRate.toFixed(2);
           setRatePerLiter(rateStr);
@@ -242,10 +250,12 @@ export default function AddFuelScreen({ route, navigation }: any) {
     loadPricesForCity(selectedCity);
   }, [selectedCity]);
 
-  // Auto-sync rate when vehicle fuelType changes
+  // Auto-sync rate when vehicle fuelType changes (and reload prices for correct type)
   useEffect(() => {
-    if (livePrices && !isEditing) {
-      const activeRate = fuelType === 'DIESEL' ? livePrices.diesel : livePrices.petrol;
+    if (livePrices && !isEditing && vehicleFuelLoaded.current) {
+      const activeRate = fuelType === 'DIESEL' ? livePrices.diesel
+        : fuelType === 'CNG' ? livePrices.cng
+        : livePrices.petrol;
       if (activeRate > 0) {
         const rateStr = activeRate.toFixed(2);
         setRatePerLiter(rateStr);

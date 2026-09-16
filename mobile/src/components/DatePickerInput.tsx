@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { format, isAfter, startOfDay, subDays, addMonths, subMonths, getDaysInMonth, startOfMonth, getDay, isSameDay } from 'date-fns';
+import { format, isAfter, isBefore, startOfDay, subDays, addMonths, subMonths, getDaysInMonth, startOfMonth, getDay, isSameDay } from 'date-fns';
 import { colors, spacing, borderRadius, fontSize } from '../theme/colors';
 
 interface DatePickerInputProps {
@@ -36,6 +36,8 @@ export default function DatePickerInput({
 
   const today = startOfDay(new Date());
   const maxDay = maxDate ? startOfDay(maxDate) : today;
+  const minDay = minDate ? startOfDay(minDate) : undefined;
+  const isFutureMode = isAfter(maxDay, today);
 
   const openPicker = () => {
     setTempDate(new Date(value));
@@ -44,8 +46,13 @@ export default function DatePickerInput({
   };
 
   const handleSelectDay = (dayDate: Date) => {
-    if (isAfter(startOfDay(dayDate), maxDay)) {
-      Alert.alert('Invalid Date', 'Future dates cannot be selected for transactions.');
+    const dayStart = startOfDay(dayDate);
+    if (isAfter(dayStart, maxDay)) {
+      Alert.alert('Invalid Date', isFutureMode ? 'Date exceeds maximum allowed date.' : 'Future dates cannot be selected for transactions.');
+      return;
+    }
+    if (minDay && isBefore(dayStart, minDay)) {
+      Alert.alert('Invalid Date', 'Past dates cannot be selected for reminders.');
       return;
     }
     setTempDate(dayDate);
@@ -58,8 +65,13 @@ export default function DatePickerInput({
   };
 
   const handleConfirm = () => {
-    if (isAfter(startOfDay(tempDate), maxDay)) {
-      Alert.alert('Invalid Date', 'Future dates cannot be selected for transactions.');
+    const tempStart = startOfDay(tempDate);
+    if (isAfter(tempStart, maxDay)) {
+      Alert.alert('Invalid Date', isFutureMode ? 'Date exceeds maximum allowed date.' : 'Future dates cannot be selected for transactions.');
+      return;
+    }
+    if (minDay && isBefore(tempStart, minDay)) {
+      Alert.alert('Invalid Date', 'Past dates cannot be selected for reminders.');
       return;
     }
     onChange(tempDate);
@@ -92,12 +104,14 @@ export default function DatePickerInput({
   // Days of current month
   for (let d = 1; d <= daysInMonth; d++) {
     const dayDate = new Date(viewingMonth.getFullYear(), viewingMonth.getMonth(), d);
-    const disabled = isAfter(startOfDay(dayDate), maxDay);
+    const dayStart = startOfDay(dayDate);
+    const afterMax = isAfter(dayStart, maxDay);
+    const beforeMin = minDay ? isBefore(dayStart, minDay) : false;
     days.push({
       dayNum: d,
       fullDate: dayDate,
       isCurrentMonth: true,
-      disabled,
+      disabled: afterMax || beforeMin,
     });
   }
 
@@ -141,7 +155,8 @@ export default function DatePickerInput({
               </TouchableOpacity>
             </View>
 
-            {/* Quick selection chips */}
+            {/* Quick selection chips — only for past-date mode (transactions) */}
+            {!isFutureMode && (
             <View style={styles.quickChips}>
               <TouchableOpacity
                 style={[styles.quickChip, isSameDay(tempDate, today) && styles.quickChipActive]}
@@ -162,6 +177,7 @@ export default function DatePickerInput({
                 <Text style={[styles.quickChipText, isSameDay(tempDate, subDays(today, 2)) && styles.quickChipTextActive]}>2 Days Ago</Text>
               </TouchableOpacity>
             </View>
+            )}
 
             {/* Month Navigator */}
             <View style={styles.monthNav}>
@@ -222,11 +238,13 @@ export default function DatePickerInput({
               })}
             </View>
 
-            {/* Future dates notice */}
+            {/* Date restriction notice */}
+            {!isFutureMode && (
             <View style={styles.noticeContainer}>
               <Ionicons name="information-circle-outline" size={16} color={colors.textSecondary} />
               <Text style={styles.noticeText}>Future dates cannot be selected</Text>
             </View>
+            )}
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>

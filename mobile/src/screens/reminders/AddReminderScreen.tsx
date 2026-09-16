@@ -18,6 +18,7 @@ import { vehiclesApi } from '../../api/vehicles';
 import { confirmAction } from '../../utils/confirmAlert';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
+import DatePickerInput from '../../components/DatePickerInput';
 import { colors, spacing, borderRadius, fontSize } from '../../theme/colors';
 
 const REMINDER_TYPES = [
@@ -51,6 +52,7 @@ export default function AddReminderScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Set header options
   useEffect(() => {
     const returnTo = route.params?.returnTo;
     if (isEditing) {
@@ -98,6 +100,7 @@ export default function AddReminderScreen({ route, navigation }: any) {
     if (!isEditing || !title) {
       setTitle(item.defaultTitle);
     }
+    // Always enable due date for date-based types
     if (item.id === 'PUC') {
       setDueDate(addMonths(new Date(), 6));
       setHasDueDate(true);
@@ -106,13 +109,25 @@ export default function AddReminderScreen({ route, navigation }: any) {
       setHasDueDate(true);
     } else if (item.id === 'SERVICE') {
       setDueDate(addMonths(new Date(), 6));
+      setHasDueDate(true);
       setHasDueKm(true);
+    } else if (item.id === 'PART_REPLACEMENT') {
+      setDueDate(addMonths(new Date(), 3));
+      setHasDueDate(true);
     }
   };
 
   const handlePresetDate = (months: number) => {
     setDueDate(addMonths(new Date(), months));
     setHasDueDate(true);
+  };
+
+  const navigateBack = () => {
+    if (route.params?.returnTo) {
+      navigation.navigate(route.params.returnTo);
+    } else {
+      navigation.goBack();
+    }
   };
 
   const handleSubmit = async () => {
@@ -166,30 +181,48 @@ export default function AddReminderScreen({ route, navigation }: any) {
         return;
       }
 
-      const payload: any = {
+      // Build payload — only include fields that have values (avoid sending null to Zod validator)
+      const payload: Record<string, any> = {
         type,
-        title: title.trim() || undefined,
-        dueDate: hasDueDate ? dueDate.toISOString() : null,
-        dueKm: hasDueKm && dueKm ? parseInt(dueKm, 10) : null,
+        status: 'PENDING',
       };
 
-      if (isEditing) {
-        await remindersApi.update(selectedVehicleId, existingRecord.id, payload);
-      } else {
-        await remindersApi.create(selectedVehicleId, {
-          ...payload,
-          status: 'PENDING',
-        });
+      if (title && title.trim()) {
+        payload.title = title.trim();
       }
 
-      // Return back — if launched from Dashboard, go to Dashboard tab directly
-      if (route.params?.returnTo) {
-        navigation.navigate(route.params.returnTo);
-      } else {
-        navigation.goBack();
+      if (hasDueDate) {
+        payload.dueDate = dueDate.toISOString();
       }
+
+      if (hasDueKm && dueKm) {
+        payload.dueKm = parseInt(dueKm, 10);
+      }
+
+      if (isEditing) {
+        // For update, we need to handle clearing fields explicitly
+        const updatePayload: Record<string, any> = {
+          type,
+          title: title.trim() || undefined,
+        };
+        if (hasDueDate) {
+          updatePayload.dueDate = dueDate.toISOString();
+        }
+        if (hasDueKm && dueKm) {
+          updatePayload.dueKm = parseInt(dueKm, 10);
+        }
+        if (!isNaN(Number(updatePayload.dueKm)) === false) {
+          delete updatePayload.dueKm;
+        }
+        await remindersApi.update(selectedVehicleId, existingRecord.id, updatePayload);
+      } else {
+        await remindersApi.create(selectedVehicleId, payload);
+      }
+
+      navigateBack();
     } catch (e: any) {
-      Alert.alert('Error', e.response?.data?.message || (isEditing ? 'Failed to update reminder' : 'Failed to save reminder'));
+      const msg = e.response?.data?.message || e.response?.data?.error || (isEditing ? 'Failed to update reminder' : 'Failed to save reminder');
+      Alert.alert('Error', typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
     }
@@ -204,11 +237,7 @@ export default function AddReminderScreen({ route, navigation }: any) {
         setDeleting(true);
         try {
           await remindersApi.delete(selectedVehicleId, existingRecord.id);
-          if (route.params?.returnTo) {
-            navigation.navigate(route.params.returnTo);
-          } else {
-            navigation.goBack();
-          }
+          navigateBack();
         } catch (e: any) {
           Alert.alert('Error', e.response?.data?.message || 'Failed to delete reminder');
         } finally {
@@ -303,9 +332,17 @@ export default function AddReminderScreen({ route, navigation }: any) {
 
             {hasDueDate ? (
               <View style={styles.dateSelectorArea}>
-                <Text style={styles.selectedDateBadge}>
-                  📅 Due: {format(dueDate, 'EEEE, dd MMMM yyyy')}
-                </Text>
+                {/* Calendar Date Picker */}
+                <DatePickerInput
+                  label="Due Date *"
+                  value={dueDate}
+                  onChange={setDueDate}
+                  minDate={new Date()}
+                  maxDate={addYears(new Date(), 10)}
+                  helperText="Select the date when this reminder is due"
+                />
+
+                {/* Quick preset chips */}
                 <Text style={styles.subLabel}>Quick Presets:</Text>
                 <View style={styles.presetChips}>
                   <TouchableOpacity style={styles.presetChip} onPress={() => handlePresetDate(1)}>
@@ -438,16 +475,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
   },
-  selectedDateBadge: {
-    fontSize: fontSize.sm,
-    fontWeight: '700',
-    color: colors.primaryDark,
-    backgroundColor: colors.surfaceAlt,
-    padding: spacing.sm,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.sm,
-  },
-  subLabel: { fontSize: fontSize.xs, color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600' },
+  subLabel: { fontSize: fontSize.xs, color: colors.textSecondary, marginBottom: spacing.xs, fontWeight: '600', marginTop: spacing.sm },
   presetChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   presetChip: {
     paddingHorizontal: spacing.md,

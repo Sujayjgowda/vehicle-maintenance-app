@@ -51,8 +51,28 @@ export async function updateReminder(id: string, vehicleId: string, data: Update
   });
 }
 
-export async function deleteReminder(id: string, vehicleId: string) {
-  const existing = await prisma.reminder.findFirst({ where: { id, vehicleId } });
+export async function deleteReminder(id: string, vehicleId?: string) {
+  const existing = await prisma.reminder.findFirst({
+    where: {
+      id,
+      ...(vehicleId ? { vehicleId } : {}),
+    },
+  });
+  if (!existing) {
+    const err = new Error("Reminder not found") as any;
+    err.statusCode = 404;
+    throw err;
+  }
+  return prisma.reminder.delete({ where: { id } });
+}
+
+export async function deleteReminderDirect(id: string, userId: string) {
+  const existing = await prisma.reminder.findFirst({
+    where: {
+      id,
+      vehicle: { userId },
+    },
+  });
   if (!existing) {
     const err = new Error("Reminder not found") as any;
     err.statusCode = 404;

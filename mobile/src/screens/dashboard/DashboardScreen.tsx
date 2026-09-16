@@ -72,10 +72,11 @@ function getVehicleImageSource(vehicle: any): any {
     if (model.includes(key)) return { uri: url };
   }
 
-  // 4. Default fallback by category
-  return isCar(vehicle)
-    ? require('../../../assets/vehicles/creta.jpg')
-    : require('../../../assets/vehicles/himalayan.jpg');
+  // 4. Default fallback: bike if 2-wheeler keywords match, else car
+  const isBike = /bike|motorcycle|scooter|himalayan|bullet|hunter|classic|activa|jupiter|pulsar|apache|duke|ktm|yamaha|ola|ather/.test(model) || /royal enfield|tvs|bajaj|ktm|ather|ola/.test(make);
+  return isBike
+    ? require('../../../assets/vehicles/himalayan.jpg')
+    : require('../../../assets/vehicles/creta.jpg');
 }
 
 // ─── Category config for donut ───
@@ -90,20 +91,10 @@ const CATEGORY_COLORS: Record<string, { label: string; icon: string; color: stri
   OTHER: { label: 'Other', icon: 'receipt', color: '#64748B' },
 };
 
-// ─── Fuel type detection ───
-function isCar(vehicle: any): boolean {
-  if (!vehicle) return false;
-  const model = (vehicle.model || '').toLowerCase();
-  const make = (vehicle.make || '').toLowerCase();
-  return (
-    /creta|seltos|xuv|nexon|hector|fortuner|innova|brezza|safari|venue|sonet|thar|scorpio|harrier|altroz|punch|i20|verna|city|civic|polo|swift|baleno|dzire|ertiga|bolero/.test(model) ||
-    /hyundai|kia|mahindra|tata|mg|toyota|maruti|volkswagen|skoda|ford/.test(make)
-  );
-}
-
+// ─── Fuel type detection (straightforward from vehicle record) ───
 function getFuelType(vehicle: any): string {
   if (vehicle?.fuelType) {
-    return String(vehicle.fuelType).toLowerCase();
+    return String(vehicle.fuelType).toLowerCase().trim();
   }
   return 'petrol';
 }
@@ -390,13 +381,9 @@ export default function DashboardScreen({ navigation }: any) {
             <View style={styles.vehicleRowFit}>
               {vehicles.map((v, idx) => {
                 const active = idx === selectedIdx;
-                const vFuel = v.fuelType || getFuelType(v);
+                const vFuel = getFuelType(v);
                 const badgeConfig = getFuelBadgeConfig(vFuel);
-                const displayName = v.model?.toLowerCase().includes('creta')
-                  ? 'Hyundai Creta'
-                  : v.model?.toLowerCase().includes('himalayan')
-                  ? 'RE Himalayan 450'
-                  : `${v.make} ${v.model}`;
+                const displayName = `${v.make || ''} ${v.model || ''}`.trim() || 'Vehicle';
 
                 return (
                   <TouchableOpacity
@@ -459,13 +446,9 @@ export default function DashboardScreen({ navigation }: any) {
             >
               {vehicles.map((v, idx) => {
                 const active = idx === selectedIdx;
-                const vFuel = v.fuelType || getFuelType(v);
+                const vFuel = getFuelType(v);
                 const badgeConfig = getFuelBadgeConfig(vFuel);
-                const displayName = v.model?.toLowerCase().includes('creta')
-                  ? 'Hyundai Creta'
-                  : v.model?.toLowerCase().includes('himalayan')
-                  ? 'RE Himalayan 450'
-                  : `${v.make} ${v.model}`;
+                const displayName = `${v.make || ''} ${v.model || ''}`.trim() || 'Vehicle';
 
                 return (
                   <TouchableOpacity
@@ -845,7 +828,11 @@ export default function DashboardScreen({ navigation }: any) {
                   onPress={() =>
                     navigation.navigate('VehiclesTab', {
                       screen: a.screen,
-                      params: { vehicleId: selectedVehicle.id, returnTo: 'DashboardTab' },
+                      params: {
+                        vehicleId: selectedVehicle.id,
+                        fuelType: selectedVehicle.fuelType || getFuelType(selectedVehicle),
+                        returnTo: 'DashboardTab',
+                      },
                     })
                   }
                 >

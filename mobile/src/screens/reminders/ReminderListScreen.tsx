@@ -61,13 +61,19 @@ export default function ReminderListScreen({ route, navigation }: any) {
     );
   };
 
-  const handleDelete = (item: any) => {
+  const handleDelete = (target: any) => {
+    const item = typeof target === 'object' && target !== null 
+      ? target 
+      : reminders.find((r) => r.id === target) || { id: target, vehicleId };
+    const targetVehicleId = item.vehicleId || vehicleId;
+    const targetId = item.id || target;
+
     confirmAction(
       'Delete Reminder',
       'Are you sure you want to remove this reminder?',
       async () => {
         try {
-          await remindersApi.delete(item.vehicleId, item.id);
+          await remindersApi.delete(targetVehicleId, targetId);
           load();
         } catch (e) {
           Alert.alert('Error', 'Failed to delete reminder');
@@ -182,7 +188,7 @@ export default function ReminderListScreen({ route, navigation }: any) {
                   <Ionicons name="create-outline" size={16} color={colors.primary} />
                   <Text style={styles.actionEditText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item.id)}>
+                <TouchableOpacity style={styles.actionDeleteBtn} onPress={() => handleDelete(item)}>
                   <Ionicons name="trash-outline" size={16} color={colors.error} />
                 </TouchableOpacity>
               </View>

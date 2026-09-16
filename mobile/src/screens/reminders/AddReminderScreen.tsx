@@ -236,7 +236,8 @@ export default function AddReminderScreen({ route, navigation }: any) {
       async () => {
         setDeleting(true);
         try {
-          await remindersApi.delete(selectedVehicleId, existingRecord.id);
+          const vId = selectedVehicleId || existingRecord.vehicleId;
+          await remindersApi.delete(vId, existingRecord.id);
           navigateBack();
         } catch (e: any) {
           Alert.alert('Error', e.response?.data?.message || 'Failed to delete reminder');

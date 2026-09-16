@@ -17,7 +17,9 @@ export default function AddVehicleScreen({ route, navigation }: any) {
   const [model, setModel] = useState(existingVehicle?.model || '');
   const [year, setYear] = useState(existingVehicle?.year ? String(existingVehicle.year) : '');
   const [plate, setPlate] = useState(existingVehicle?.licensePlate || '');
-  const [fuelType, setFuelType] = useState(existingVehicle?.fuelType || 'PETROL');
+  const [fuelType, setFuelType] = useState(
+    existingVehicle?.fuelType ? String(existingVehicle.fuelType).toUpperCase().trim() : 'PETROL'
+  );
   const [odometer, setOdometer] = useState(
     existingVehicle?.currentOdometer !== undefined && existingVehicle?.currentOdometer !== null
       ? String(existingVehicle.currentOdometer)

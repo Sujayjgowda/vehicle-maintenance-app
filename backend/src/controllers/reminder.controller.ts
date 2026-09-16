@@ -23,7 +23,12 @@ export async function update(req: AuthRequest, res: Response) {
 }
 
 export async function remove(req: AuthRequest, res: Response) {
-  await reminderService.deleteReminder(req.params.id!, req.params.vehicleId!);
+  await reminderService.deleteReminder(req.params.id!, req.params.vehicleId);
+  res.status(204).send();
+}
+
+export async function removeDirect(req: AuthRequest, res: Response) {
+  await reminderService.deleteReminderDirect(req.params.id!, req.user!.userId);
   res.status(204).send();
 }
 

@@ -131,7 +131,10 @@ export default function AddFuelScreen({ route, navigation }: any) {
   const [allCities, setAllCities] = useState<Array<{ name: string; value: string }>>(LOCAL_INDIAN_CITIES);
   const [citySearchQuery, setCitySearchQuery] = useState('');
 
-  const [fuelType, setFuelType] = useState('PETROL');
+  const passedFuelType = record?.fuelType || route?.params?.fuelType;
+  const [fuelType, setFuelType] = useState(
+    passedFuelType ? String(passedFuelType).toUpperCase().trim() : 'PETROL'
+  );
   const [ratePerLiter, setRatePerLiter] = useState(
     record && record.liters > 0 ? (record.cost / record.liters).toFixed(2) : '111.68'
   );
@@ -139,7 +142,7 @@ export default function AddFuelScreen({ route, navigation }: any) {
   const [cost, setCost] = useState(record ? String(record.cost) : '');
   const [odometer, setOdometer] = useState(record ? String(record.odometerReading) : '');
   const [loading, setLoading] = useState(false);
-  const vehicleFuelLoaded = useRef(false);
+  const vehicleFuelLoaded = useRef(Boolean(passedFuelType));
 
   // Set navigation header title dynamically + override back button when launched from Dashboard
   useEffect(() => {

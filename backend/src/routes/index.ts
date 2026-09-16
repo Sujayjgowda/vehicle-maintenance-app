@@ -49,6 +49,7 @@ router.use("/service-centers", serviceCenterRoutes);
 
 // Cross-vehicle aggregate endpoints
 router.get("/reminders/upcoming", asyncHandler(reminderController.getUpcoming as any));
+router.delete("/reminders/:id", asyncHandler(reminderController.removeDirect as any));
 router.get("/expenses/summary", asyncHandler(expenseController.getUserSummary as any));
 
 export default router;

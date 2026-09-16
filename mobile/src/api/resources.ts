@@ -21,7 +21,14 @@ export const remindersApi = {
   getAll: (vehicleId: string) => api.get(`/vehicles/${vehicleId}/reminders`),
   create: (vehicleId: string, data: any) => api.post(`/vehicles/${vehicleId}/reminders`, data),
   update: (vehicleId: string, id: string, data: any) => api.put(`/vehicles/${vehicleId}/reminders/${id}`, data),
-  delete: (vehicleId: string, id: string) => api.delete(`/vehicles/${vehicleId}/reminders/${id}`),
+  delete: (vehicleId?: string, id?: string) => {
+    const remId = id || vehicleId;
+    const vId = id ? vehicleId : undefined;
+    if (!vId || vId === 'undefined') {
+      return api.delete(`/reminders/${remId}`);
+    }
+    return api.delete(`/vehicles/${vId}/reminders/${remId}`);
+  },
   getUpcoming: () => api.get('/reminders/upcoming'),
 };
 
